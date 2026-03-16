@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fiiApi } from '../api';
-import { TrendingUp, ThumbsUp, ThumbsDown, Minus, LayoutDashboard, Wallet, DollarSign, BookOpen } from 'lucide-react';
+import Layout from '../components/Layout';
+import { TrendingUp, ThumbsUp, ThumbsDown, Minus } from 'lucide-react';
 
 interface AnalysisData {
   ticker: string;
@@ -76,154 +77,117 @@ export default function Analysis() {
   const sellRecommendations = analysis.filter(a => a.recommendation === 'vender');
 
   return (
-    <div className="app-container">
-      <aside className="sidebar">
-        <div className="sidebar-header">
-          <h2 className="sidebar-title">
-            <TrendingUp size={24} />
-            FII Tracker
-          </h2>
-        </div>
-        <ul className="nav-menu">
-          <li className="nav-item" onClick={() => navigate('/dashboard')}>
-            <LayoutDashboard size={20} />
-            Dashboard
-          </li>
-          <li className="nav-item" onClick={() => navigate('/holdings')}>
-            <Wallet size={20} />
-            Carteira
-          </li>
-          <li className="nav-item" onClick={() => navigate('/dividends')}>
-            <DollarSign size={20} />
-            Proventos
-          </li>
-          <li className="nav-item active">
-            <TrendingUp size={20} />
-            Análise
-          </li>
-          <li className="nav-item" onClick={() => navigate('/documentation')}>
-            <BookOpen size={20} />
-            Documentação
-          </li>
-        </ul>
-      </aside>
-
-      <main className="main-content">
-        <div className="header-actions">
-          <div>
-            <h1 className="page-title">Análise da Carteira</h1>
-            <p className="page-subtitle">Recomendações baseadas em indicadores</p>
+    <Layout 
+      title="Análise da Carteira" 
+      subtitle="Recomendações baseadas em indicadores"
+      actions={
+        <button className="btn btn-secondary" onClick={fetchAnalysis}>
+          Atualizar
+        </button>
+      }
+    >
+      {loading ? (
+        <p>Carregando...</p>
+      ) : analysis.length === 0 ? (
+        <div className="empty-state">
+          <div className="empty-state-icon">
+            <TrendingUp size={64} />
           </div>
-          <button className="btn btn-secondary" onClick={fetchAnalysis}>
-            Atualizar
+          <h3 className="empty-state-title">Nenhum FII para analisar</h3>
+          <p className="empty-state-description">
+            Adicione FIIs à sua carteira para ver a análise
+          </p>
+          <button className="btn btn-primary" onClick={() => navigate('/holdings')}>
+            Adicionar FII
           </button>
         </div>
-
-        {loading ? (
-          <p>Carregando...</p>
-        ) : analysis.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-state-icon">
-              <TrendingUp size={64} />
+      ) : (
+        <>
+          <div className="cards-grid" style={{ marginBottom: '2rem' }}>
+            <div className="card">
+              <h3 className="card-title">Oportunidades de Compra</h3>
+              <p className="card-value" style={{ color: 'var(--primary)' }}>
+                {buyRecommendations.length}
+              </p>
             </div>
-            <h3 className="empty-state-title">Nenhum FII para analisar</h3>
-            <p className="empty-state-description">
-              Adicione FIIs à sua carteira para ver a análise
-            </p>
-            <button className="btn btn-primary" onClick={() => navigate('/holdings')}>
-              Adicionar FII
-            </button>
+
+            <div className="card">
+              <h3 className="card-title">Para Manter</h3>
+              <p className="card-value" style={{ color: 'var(--warning)' }}>
+                {holdRecommendations.length}
+              </p>
+            </div>
+
+            <div className="card">
+              <h3 className="card-title">Sobrepreçados</h3>
+              <p className="card-value" style={{ color: 'var(--danger)' }}>
+                {sellRecommendations.length}
+              </p>
+            </div>
           </div>
-        ) : (
-          <>
-            <div className="cards-grid" style={{ marginBottom: '2rem' }}>
-              <div className="card">
-                <h3 className="card-title">Oportunidades de Compra</h3>
-                <p className="card-value" style={{ color: 'var(--primary)' }}>
-                  {buyRecommendations.length}
-                </p>
-              </div>
 
-              <div className="card">
-                <h3 className="card-title">Para Manter</h3>
-                <p className="card-value" style={{ color: 'var(--warning)' }}>
-                  {holdRecommendations.length}
-                </p>
-              </div>
+          <div className="holdings-grid">
+            {analysis.map((item) => (
+              <div key={item.ticker} className="holding-card">
+                <div className="holding-header">
+                  <div>
+                    <h3 className="holding-ticker">{item.ticker}</h3>
+                    <p className="holding-name">{item.sector || 'Setor não disponível'}</p>
+                  </div>
+                  <span
+                    className={`recommendation-badge ${getRecommendationClass(item.recommendation)}`}
+                  >
+                    {getRecommendationIcon(item.recommendation)}
+                    {getRecommendationText(item.recommendation)}
+                  </span>
+                </div>
 
-              <div className="card">
-                <h3 className="card-title">Sobrepreçados</h3>
-                <p className="card-value" style={{ color: 'var(--danger)' }}>
-                  {sellRecommendations.length}
-                </p>
-              </div>
-            </div>
-
-            <div className="holdings-grid">
-              {analysis.map((item) => (
-                <div key={item.ticker} className="holding-card">
-                  <div className="holding-header">
-                    <div>
-                      <h3 className="holding-ticker">{item.ticker}</h3>
-                      <p className="holding-name">{item.sector || 'Setor não disponível'}</p>
-                    </div>
-                    <span
-                      className={`recommendation-badge ${getRecommendationClass(item.recommendation)}`}
-                    >
-                      {getRecommendationIcon(item.recommendation)}
-                      {getRecommendationText(item.recommendation)}
+                <div className="holding-stats">
+                  <div className="stat-item">
+                    <span className="stat-label">P/VP</span>
+                    <span className="stat-value">
+                      {item.pVP?.toFixed(2)}
+                      {item.pVP && item.pVP < 1 ? ' (Desconto)' : item.pVP && item.pVP > 1 ? ' (Ágio)' : ''}
                     </span>
                   </div>
-
-                  <div className="holding-stats">
-                    <div className="stat-item">
-                      <span className="stat-label">P/VP</span>
-                      <span className="stat-value">
-                        {item.pVP?.toFixed(2)}
-                        {item.pVP && item.pVP < 1 ? ' (Desconto)' : item.pVP && item.pVP > 1 ? ' (Ágio)' : ''}
-                      </span>
-                    </div>
-                    <div className="stat-item">
-                      <span className="stat-label">DY (12M)</span>
-                      <span className="stat-value">{item.dy12m?.toFixed(2)}%</span>
-                    </div>
-                    <div className="stat-item">
-                      <span className="stat-label">Cotação</span>
-                      <span className="stat-value">R$ {item.currentPrice?.toFixed(2)}</span>
-                    </div>
-                    <div className="stat-item">
-                      <span className="stat-label">P. Médio</span>
-                      <span className="stat-value">R$ {item.avgPrice.toFixed(2)}</span>
-                    </div>
-                    <div className="stat-item">
-                      <span className="stat-label">Valor Atual</span>
-                      <span className="stat-value">R$ {item.currentValue.toFixed(2)}</span>
-                    </div>
-                    <div className="stat-item">
-                      <span className="stat-label">Gain/Loss</span>
-                      <span className={`stat-value ${item.gainLoss >= 0 ? 'positive' : 'negative'}`}
-                            style={{ color: item.gainLoss >= 0 ? 'var(--primary)' : 'var(--danger)' }}>
-                        {item.gainLossPercent.toFixed(2)}%
-                      </span>
-                    </div>
+                  <div className="stat-item">
+                    <span className="stat-label">DY (12M)</span>
+                    <span className="stat-value">{item.dy12m?.toFixed(2)}%</span>
                   </div>
-
-                  <div className="recommendation">
-                    <p className="recommendation-label">Indicação baseada no P/VP</p>
-                    <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-                      {item.pVP && item.pVP < 0.95 && 'FII está com desconto em relação ao valor patrimonial.'}
-                      {item.pVP && item.pVP >= 0.95 && item.pVP <= 1.05 && 'FII está próximo do valor patrimonial.'}
-                      {item.pVP && item.pVP > 1.05 && 'FII está sobrepreçado em relação ao valor patrimonial.'}
-                    </p>
+                  <div className="stat-item">
+                    <span className="stat-label">Cotação</span>
+                    <span className="stat-value">R$ {item.currentPrice?.toFixed(2)}</span>
+                  </div>
+                  <div className="stat-item">
+                    <span className="stat-label">P. Médio</span>
+                    <span className="stat-value">R$ {item.avgPrice.toFixed(2)}</span>
+                  </div>
+                  <div className="stat-item">
+                    <span className="stat-label">Valor Atual</span>
+                    <span className="stat-value">R$ {item.currentValue.toFixed(2)}</span>
+                  </div>
+                  <div className="stat-item">
+                    <span className="stat-label">Gain/Loss</span>
+                    <span className={`stat-value ${item.gainLoss >= 0 ? 'positive' : 'negative'}`}
+                          style={{ color: item.gainLoss >= 0 ? 'var(--primary)' : 'var(--danger)' }}>
+                      {item.gainLossPercent.toFixed(2)}%
+                    </span>
                   </div>
                 </div>
-              ))}
-            </div>
-          </>
-        )}
-      </main>
-    </div>
+
+                <div className="recommendation">
+                  <p className="recommendation-label">Indicação baseada no P/VP</p>
+                  <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                    {item.pVP && item.pVP < 0.95 && 'FII está com desconto em relação ao valor patrimonial.'}
+                    {item.pVP && item.pVP >= 0.95 && item.pVP <= 1.05 && 'FII está próximo do valor patrimonial.'}
+                    {item.pVP && item.pVP > 1.05 && 'FII está sobrepreçado em relação ao valor patrimonial.'}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </Layout>
   );
 }
-
-

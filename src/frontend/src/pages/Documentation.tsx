@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { LayoutDashboard, TrendingUp, DollarSign, Wallet, BookOpen, Globe, Info, Target, Lightbulb, Code } from 'lucide-react';
+import Layout from '../components/Layout';
+import { Globe, Info, Target, Lightbulb, Code } from 'lucide-react';
 
 const docContent = {
   PT: {
@@ -96,7 +96,6 @@ The FII Tracker system is built using modern and robust technologies:
 type TabType = 'overview' | 'analysis' | 'tips' | 'tech';
 
 export default function Documentation() {
-  const navigate = useNavigate();
   const [language, setLanguage] = useState<'PT' | 'EN'>('PT');
   const [activeTab, setActiveTab] = useState<TabType>('overview');
 
@@ -108,77 +107,40 @@ export default function Documentation() {
   ];
 
   return (
-    <div className="app-container">
-      <aside className="sidebar">
-        <div className="sidebar-header">
-          <h2 className="sidebar-title">
-            <BookOpen size={24} />
-            FII Tracker
-          </h2>
-        </div>
-        <ul className="nav-menu">
-          <li className="nav-item" onClick={() => navigate('/dashboard')}>
-            <LayoutDashboard size={20} />
-            Dashboard
-          </li>
-          <li className="nav-item" onClick={() => navigate('/holdings')}>
-            <Wallet size={20} />
-            Carteira
-          </li>
-          <li className="nav-item" onClick={() => navigate('/dividends')}>
-            <DollarSign size={20} />
-            Proventos
-          </li>
-          <li className="nav-item" onClick={() => navigate('/analysis')}>
-            <TrendingUp size={20} />
-            Análise
-          </li>
-          <li className="nav-item active">
-            <BookOpen size={20} />
-            Documentação
-          </li>
-        </ul>
-      </aside>
-
-      <main className="main-content">
-        <div className="header-actions">
-          <div>
-            <h1 className="page-title">{language === 'PT' ? 'Documentação' : 'Documentation'}</h1>
-            <p className="page-subtitle">
-              {language === 'PT' ? 'Sobre o sistema FII Tracker' : 'About the FII Tracker system'}
-            </p>
-          </div>
-          <button 
-            className="btn btn-secondary" 
-            onClick={() => setLanguage(lang => lang === 'PT' ? 'EN' : 'PT')}
-            style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+    <Layout 
+      title={language === 'PT' ? 'Documentação' : 'Documentation'} 
+      subtitle={language === 'PT' ? 'Sobre o sistema FII Tracker' : 'About the FII Tracker system'}
+      actions={
+        <button 
+          className="btn btn-secondary" 
+          onClick={() => setLanguage(lang => lang === 'PT' ? 'EN' : 'PT')}
+          style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+        >
+          <Globe size={18} />
+          {language === 'PT' ? 'Read in English' : 'Ler em Português'}
+        </button>
+      }
+    >
+      <div className="docs-tabs" style={{ marginTop: '2rem' }}>
+        {tabs.map(tab => (
+          <button
+            key={tab.id}
+            className={`docs-tab ${activeTab === tab.id ? 'active' : ''}`}
+            onClick={() => setActiveTab(tab.id)}
           >
-            <Globe size={18} />
-            {language === 'PT' ? 'Read in English' : 'Ler em Português'}
+            {tab.icon}
+            {language === 'PT' ? tab.labelPT : tab.labelEN}
           </button>
-        </div>
+        ))}
+      </div>
 
-        <div className="docs-tabs" style={{ marginTop: '2rem' }}>
-          {tabs.map(tab => (
-            <button
-              key={tab.id}
-              className={`docs-tab ${activeTab === tab.id ? 'active' : ''}`}
-              onClick={() => setActiveTab(tab.id)}
-            >
-              {tab.icon}
-              {language === 'PT' ? tab.labelPT : tab.labelEN}
-            </button>
-          ))}
+      <div className="card tab-content" style={{ marginTop: '1.5rem' }}>
+        <div className="markdown-body" style={{ lineHeight: '1.6' }}>
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            {docContent[language][activeTab]}
+          </ReactMarkdown>
         </div>
-
-        <div className="card tab-content" style={{ marginTop: '1.5rem' }}>
-          <div className="markdown-body" style={{ lineHeight: '1.6' }}>
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {docContent[language][activeTab]}
-            </ReactMarkdown>
-          </div>
-        </div>
-      </main>
-    </div>
+      </div>
+    </Layout>
   );
 }

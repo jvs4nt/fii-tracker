@@ -1,11 +1,26 @@
 import { Router } from 'express';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import prismaClient from '../database';
-import { fetchFiiData, fetchDividendsHistory } from '../services/fiiService';
+import { fetchFiiData, fetchDividendsHistory, searchFiiTickers } from '../services/fiiService';
 
 const router = Router();
 
 router.use(authMiddleware);
+
+// Search FII tickers
+router.get('/search', async (req: AuthRequest, res) => {
+  try {
+    const { q } = req.query;
+    if (!q || typeof q !== 'string') {
+      return res.json([]);
+    }
+    const suggestions = await searchFiiTickers(q);
+    return res.json(suggestions);
+  } catch (error) {
+    console.error('Search FII error:', error);
+    return res.status(500).json({ error: 'Erro ao buscar sugestões' });
+  }
+});
 
 // Get FII data from API
 router.get('/quote/:ticker', async (req: AuthRequest, res) => {
@@ -94,8 +109,10 @@ router.get('/dashboard', async (req: AuthRequest, res) => {
 
         totalInvested += holding.quantity * holding.avgPrice;
         totalCurrentValue += currentValue;
-
-        return { ...holding, ...fiiData, currentValue };
+        
+        const merged = { ...holding, ...fiiData, currentValue };
+        console.log(`[Dashboard Debug] ${holding.ticker}: Sector=${merged.sector}`);
+        return merged;
       })
     );
 

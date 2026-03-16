@@ -49,6 +49,7 @@ export const fiiApi = {
   getDividends: (ticker: string) => api.get(`/fii/dividends/${ticker}`),
   getAnalysis: () => api.get('/fii/analysis'),
   getDashboard: () => api.get('/fii/dashboard'),
+  search: (query: string) => api.get(`/fii/search?q=${query}`),
 };
 
 export default api;

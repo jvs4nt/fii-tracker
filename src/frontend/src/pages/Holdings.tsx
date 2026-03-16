@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { holdingsApi, fiiApi } from '../api';
-import { Wallet, Plus, Edit2, Trash2, LayoutDashboard, DollarSign, TrendingUp, BookOpen } from 'lucide-react';
+import Layout from '../components/Layout';
+import { Plus, Edit2, Trash2 } from 'lucide-react';
 
 interface Holding {
   id: string;
@@ -16,7 +16,6 @@ interface Holding {
 }
 
 export default function Holdings() {
-  const navigate = useNavigate();
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -27,10 +26,38 @@ export default function Holdings() {
     avgPrice: '',
     purchaseDate: new Date().toISOString().split('T')[0],
   });
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   useEffect(() => {
     fetchHoldings();
   }, []);
+
+  const fetchSuggestions = async (query: string) => {
+    if (query.length < 2) {
+      setSuggestions([]);
+      return;
+    }
+    try {
+      const response = await fiiApi.search(query);
+      setSuggestions(response.data);
+    } catch (error) {
+      console.error('Erro ao buscar sugestões:', error);
+    }
+  };
+
+  const handleTickerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value.toUpperCase();
+    setFormData({ ...formData, ticker: val });
+    fetchSuggestions(val);
+    setShowSuggestions(true);
+  };
+
+  const selectSuggestion = (s: string) => {
+    setFormData({ ...formData, ticker: s });
+    setSuggestions([]);
+    setShowSuggestions(false);
+  };
 
   const fetchHoldings = async () => {
     try {
@@ -125,118 +152,83 @@ export default function Holdings() {
   };
 
   return (
-    <div className="app-container">
-      <aside className="sidebar">
-        <div className="sidebar-header">
-          <h2 className="sidebar-title">
-            <Wallet size={24} />
-            FII Tracker
-          </h2>
-        </div>
-        <ul className="nav-menu">
-          <li className="nav-item" onClick={() => navigate('/dashboard')}>
-            <LayoutDashboard size={20} />
-            Dashboard
-          </li>
-          <li className="nav-item active">
-            <Wallet size={20} />
-            Carteira
-          </li>
-          <li className="nav-item" onClick={() => navigate('/dividends')}>
-            <DollarSign size={20} />
-            Proventos
-          </li>
-          <li className="nav-item" onClick={() => navigate('/analysis')}>
-            <TrendingUp size={20} />
-            Análise
-          </li>
-          <li className="nav-item" onClick={() => navigate('/documentation')}>
-            <BookOpen size={20} />
-            Documentação
-          </li>
-        </ul>
-      </aside>
-
-      <main className="main-content">
-        <div className="header-actions">
-          <div>
-            <h1 className="page-title">Minha Carteira</h1>
-            <p className="page-subtitle">Gerencie seus fundos imobiliários</p>
+    <Layout 
+      title="Minha Carteira" 
+      subtitle="Gerencie seus fundos imobiliários"
+      actions={
+        <button className="btn btn-primary" onClick={openNewModal}>
+          <Plus size={18} />
+          Adicionar FII
+        </button>
+      }
+    >
+      {loading ? (
+        <p>Carregando...</p>
+      ) : holdings.length === 0 ? (
+        <div className="empty-state">
+          <div className="empty-state-icon">
+            <Plus size={64} style={{ opacity: 0.2 }} />
           </div>
+          <h3 className="empty-state-title">Nenhum FII cadastrado</h3>
+          <p className="empty-state-description">
+            Comece adicionando seu primeiro fundo imobiliário
+          </p>
           <button className="btn btn-primary" onClick={openNewModal}>
             <Plus size={18} />
             Adicionar FII
           </button>
         </div>
-
-        {loading ? (
-          <p>Carregando...</p>
-        ) : holdings.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-state-icon">
-              <Wallet size={64} />
-            </div>
-            <h3 className="empty-state-title">Nenhum FII cadastrado</h3>
-            <p className="empty-state-description">
-              Comece adicionando seu primeiro fundo imobiliário
-            </p>
-            <button className="btn btn-primary" onClick={openNewModal}>
-              <Plus size={18} />
-              Adicionar FII
-            </button>
-          </div>
-        ) : (
-          <div className="holdings-grid">
-            {holdings.map((holding) => (
-              <div key={holding.id} className="holding-card">
-                <div className="holding-header">
-                  <div>
-                    <h3 className="holding-ticker">{holding.ticker}</h3>
-                    <p className="holding-name">{holding.sector || 'Setor não disponível'}</p>
-                  </div>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button className="btn btn-secondary btn-sm" onClick={() => handleEdit(holding)}>
-                      <Edit2 size={14} />
-                    </button>
-                    <button className="btn btn-danger btn-sm" onClick={() => handleDelete(holding.id)}>
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
+      ) : (
+        <div className="holdings-grid">
+          {holdings.map((holding) => (
+            <div key={holding.id} className="holding-card">
+              <div className="holding-header">
+                <div>
+                  <h3 className="holding-ticker">{holding.ticker}</h3>
+                  <p className="holding-name">{holding.sector || 'Setor não disponível'}</p>
                 </div>
-
-                <div className="holding-stats">
-                  <div className="stat-item">
-                    <span className="stat-label">Quantidade</span>
-                    <span className="stat-value">{holding.quantity} cotas</span>
-                  </div>
-                  <div className="stat-item">
-                    <span className="stat-label">Preço Médio</span>
-                    <span className="stat-value">R$ {holding.avgPrice.toFixed(2)}</span>
-                  </div>
-                  <div className="stat-item">
-                    <span className="stat-label">Cotação Atual</span>
-                    <span className="stat-value">R$ {holding.currentPrice?.toFixed(2) || 'N/A'}</span>
-                  </div>
-                  <div className="stat-item">
-                    <span className="stat-label">P/VP</span>
-                    <span className="stat-value">{holding.pVP?.toFixed(2) || 'N/A'}</span>
-                  </div>
-                  <div className="stat-item">
-                    <span className="stat-label">DY (12M)</span>
-                    <span className="stat-value">{holding.dy12m?.toFixed(2) || 0}%</span>
-                  </div>
-                  <div className="stat-item">
-                    <span className="stat-label">Valor Atual</span>
-                    <span className="stat-value">
-                      R$ {(holding.quantity * (holding.currentPrice || holding.avgPrice)).toFixed(2)}
-                    </span>
-                  </div>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button className="btn btn-secondary btn-sm" onClick={() => handleEdit(holding)}>
+                    <Edit2 size={14} />
+                  </button>
+                  <button className="btn btn-danger btn-sm" onClick={() => handleDelete(holding.id)}>
+                    <Trash2 size={14} />
+                  </button>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-      </main>
+
+              <div className="holding-stats">
+                <div className="stat-item">
+                  <span className="stat-label">Quantidade</span>
+                  <span className="stat-value">{holding.quantity} cotas</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">Preço Médio</span>
+                  <span className="stat-value">R$ {holding.avgPrice.toFixed(2)}</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">Cotação Atual</span>
+                  <span className="stat-value">R$ {holding.currentPrice?.toFixed(2) || 'N/A'}</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">P/VP</span>
+                  <span className="stat-value">{holding.pVP?.toFixed(2) || 'N/A'}</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">DY (12M)</span>
+                  <span className="stat-value">{holding.dy12m?.toFixed(2) || 0}%</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">Valor Atual</span>
+                  <span className="stat-value">
+                    R$ {(holding.quantity * (holding.currentPrice || holding.avgPrice)).toFixed(2)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
@@ -251,10 +243,21 @@ export default function Holdings() {
                   type="text"
                   className="form-input"
                   value={formData.ticker}
-                  onChange={(e) => setFormData({ ...formData, ticker: e.target.value.toUpperCase() })}
+                  onChange={handleTickerChange}
+                  onFocus={() => setShowSuggestions(true)}
                   placeholder="HGLG11"
+                  autoComplete="off"
                   required
                 />
+                {showSuggestions && suggestions.length > 0 && (
+                  <ul className="suggestions-dropdown">
+                    {suggestions.map((s) => (
+                      <li key={s} onClick={() => selectSuggestion(s)} className="suggestion-item">
+                        {s}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
               <div className="form-group">
                 <label className="form-label">Quantidade de Cotas</label>
@@ -304,8 +307,7 @@ export default function Holdings() {
           </div>
         </div>
       )}
-    </div>
+    </Layout>
   );
 }
-
 
