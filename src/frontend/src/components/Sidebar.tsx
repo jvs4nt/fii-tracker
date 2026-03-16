@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Wallet, DollarSign, TrendingUp, BookOpen, ChartPie, LogOut, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Wallet, DollarSign, TrendingUp, BookOpen, ChartPie, LogOut, Menu, X, Bot } from 'lucide-react';
 
 export default function Sidebar() {
   const navigate = useNavigate();
@@ -17,6 +17,7 @@ export default function Sidebar() {
     { path: '/holdings', label: 'Carteira', icon: Wallet },
     { path: '/dividends', label: 'Proventos', icon: DollarSign },
     { path: '/analysis', label: 'Análise', icon: TrendingUp },
+    { path: '/assistant', label: 'Assistente IA', icon: Bot },
     { path: '/documentation', label: 'Documentação', icon: BookOpen },
   ];
 

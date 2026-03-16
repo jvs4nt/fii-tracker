@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { AxiosHeaders } from 'axios';
 import type { AxiosRequestConfig, AxiosResponse } from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
@@ -12,9 +12,11 @@ const api = axios.create({
 
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+      const headers = AxiosHeaders.from(config.headers);
+      headers.set('Authorization', `Bearer ${token}`);
+      config.headers = headers;
     }
     return config;
   },
@@ -144,6 +146,11 @@ export const fiiApi = {
   getDashboard: () => getWithCache<Record<string, unknown>>('/fii/dashboard', undefined, 20_000),
   search: (query: string, signal?: AbortSignal) =>
     getWithCache<string[]>('/fii/search', { params: { q: query }, signal }, 60_000),
+};
+
+export const aiApi = {
+  chat: (data: { message: string; history?: Array<{ role: 'user' | 'assistant'; content: string }> }) =>
+    api.post('/ai/chat', data),
 };
 
 export const invalidateApiCache = {

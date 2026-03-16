@@ -6,6 +6,7 @@ import Holdings from './pages/Holdings';
 import Dividends from './pages/Dividends';
 import Analysis from './pages/Analysis';
 import Documentation from './pages/Documentation';
+import Assistant from './pages/Assistant';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
@@ -79,6 +80,7 @@ function App() {
         <Route path="/holdings" element={<Holdings />} />
         <Route path="/dividends" element={<Dividends />} />
         <Route path="/analysis" element={<Analysis />} />
+        <Route path="/assistant" element={<Assistant />} />
         <Route path="/documentation" element={<Documentation />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
