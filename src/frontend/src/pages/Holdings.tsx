@@ -61,22 +61,8 @@ export default function Holdings() {
 
   const fetchHoldings = async () => {
     try {
-      const response = await holdingsApi.getAll();
-      const holdingsData = response.data;
-
-      // Fetch current data for each holding
-      const holdingsWithQuotes = await Promise.all(
-        holdingsData.map(async (h: Holding) => {
-          try {
-            const quote = await fiiApi.getQuote(h.ticker);
-            return { ...h, ...quote.data };
-          } catch {
-            return h;
-          }
-        })
-      );
-
-      setHoldings(holdingsWithQuotes);
+      const response = await fiiApi.getAnalysis();
+      setHoldings(response.data);
     } catch (error) {
       console.error('Erro ao buscar holdings:', error);
     } finally {

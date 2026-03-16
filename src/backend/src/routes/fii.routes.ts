@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import prismaClient from '../database';
-import { fetchFiiData, fetchDividendsHistory, searchFiiTickers } from '../services/fiiService';
+import { fetchFiiData, fetchDividendsHistory, searchFiiTickers, fetchMultipleFiiData } from '../services/fiiService';
 
 const router = Router();
 
@@ -53,32 +53,33 @@ router.get('/analysis', async (req: AuthRequest, res) => {
       where: { userId: req.userId },
     });
 
-    const analysis = await Promise.all(
-      holdings.map(async (holding) => {
-        const fiiData = await fetchFiiData(holding.ticker);
+    const tickers = holdings.map(h => h.ticker);
+    const fiiDataMap = await fetchMultipleFiiData(tickers);
 
-        const currentValue = holding.quantity * (fiiData.currentPrice || holding.avgPrice);
-        const investedValue = holding.quantity * holding.avgPrice;
-        const gainLoss = currentValue - investedValue;
-        const gainLossPercent = investedValue > 0 ? ((currentValue - investedValue) / investedValue) * 100 : 0;
+    const analysis = holdings.map((holding) => {
+      const fiiData = fiiDataMap[holding.ticker] || {};
 
-        let recommendation = 'manter';
-        if (fiiData.pVP) {
-          if (fiiData.pVP < 0.95) recommendation = 'comprar';
-          else if (fiiData.pVP > 1.05) recommendation = 'vender';
-        }
+      const currentValue = holding.quantity * (fiiData.currentPrice || holding.avgPrice);
+      const investedValue = holding.quantity * holding.avgPrice;
+      const gainLoss = currentValue - investedValue;
+      const gainLossPercent = investedValue > 0 ? ((currentValue - investedValue) / investedValue) * 100 : 0;
 
-        return {
-          ...holding,
-          ...fiiData,
-          currentValue,
-          investedValue,
-          gainLoss,
-          gainLossPercent,
-          recommendation,
-        };
-      })
-    );
+      let recommendation = 'manter';
+      if (fiiData.pVP) {
+        if (fiiData.pVP < 0.95) recommendation = 'comprar';
+        else if (fiiData.pVP > 1.05) recommendation = 'vender';
+      }
+
+      return {
+        ...holding,
+        ...fiiData,
+        currentValue,
+        investedValue,
+        gainLoss,
+        gainLossPercent,
+        recommendation,
+      };
+    });
 
     res.json(analysis);
   } catch (error) {
@@ -102,19 +103,20 @@ router.get('/dashboard', async (req: AuthRequest, res) => {
     let totalCurrentValue = 0;
     let totalDividendsReceived = 0;
 
-    const holdingsWithQuotes = await Promise.all(
-      holdings.map(async (holding) => {
-        const fiiData = await fetchFiiData(holding.ticker);
-        const currentValue = holding.quantity * (fiiData.currentPrice || holding.avgPrice);
+    const tickers = holdings.map(h => h.ticker);
+    const fiiDataMap = await fetchMultipleFiiData(tickers);
 
-        totalInvested += holding.quantity * holding.avgPrice;
-        totalCurrentValue += currentValue;
-        
-        const merged = { ...holding, ...fiiData, currentValue };
-        console.log(`[Dashboard Debug] ${holding.ticker}: Sector=${merged.sector}`);
-        return merged;
-      })
-    );
+    const holdingsWithQuotes = holdings.map((holding) => {
+      const fiiData = fiiDataMap[holding.ticker] || {};
+      const currentValue = holding.quantity * (fiiData.currentPrice || holding.avgPrice);
+
+      totalInvested += holding.quantity * holding.avgPrice;
+      totalCurrentValue += currentValue;
+      
+      const merged = { ...holding, ...fiiData, currentValue };
+      console.log(`[Dashboard Debug] ${holding.ticker}: Sector=${merged.sector}`);
+      return merged;
+    });
 
     totalDividendsReceived = dividends
       .filter(d => d.status === 'received')

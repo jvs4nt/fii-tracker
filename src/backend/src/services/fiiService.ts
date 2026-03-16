@@ -23,12 +23,28 @@ export interface FiiData {
   nextDividendDate: Date | null;
 }
 
+interface CacheEntry {
+  data: Partial<FiiData>;
+  timestamp: number;
+}
+
+const fiiDataCache: Record<string, CacheEntry> = {};
+const FII_DATA_TTL = 1000 * 60 * 15; // 15 minutos
+
 /**
  * Tenta múltiplas APIs em sequência para obter dados reais do FII
- * Ordem: Brapi -> HG Finance -> Dados de Mercado -> Scraping Status Invest -> Mock
+ * Ordem: Anbima -> Brapi -> HG Finance -> Dados de Mercado -> Scraping Status Invest -> Mock
  */
 export async function fetchFiiData(ticker: string): Promise<Partial<FiiData>> {
   const tickerUpper = ticker.toUpperCase();
+  
+  // Verificar cache
+  const cached = fiiDataCache[tickerUpper];
+  if (cached && (Date.now() - cached.timestamp < FII_DATA_TTL)) {
+    console.log(`[${tickerUpper}] Retornando dados do cache.`);
+    return cached.data;
+  }
+
   let mergedData: Partial<FiiData> = { ticker: tickerUpper };
 
   const providers = [
@@ -97,9 +113,74 @@ export async function fetchFiiData(ticker: string): Promise<Partial<FiiData>> {
     mergedData.pVP = mock.pVP;
   }
 
+  // Salvar no cache antes de retornar
+  fiiDataCache[tickerUpper] = {
+    data: mergedData,
+    timestamp: Date.now()
+  };
+
   return mergedData;
 }
 
+
+/**
+ * Busca dados de múltiplos FIIs de uma vez, otimizando via Brapi
+ */
+export async function fetchMultipleFiiData(tickers: string[]): Promise<Record<string, Partial<FiiData>>> {
+  const result: Record<string, Partial<FiiData>> = {};
+  const missingTickers: string[] = [];
+
+  // 1. Checar cache
+  for (const ticker of tickers) {
+    const t = ticker.toUpperCase();
+    const cached = fiiDataCache[t];
+    if (cached && (Date.now() - cached.timestamp < FII_DATA_TTL)) {
+      result[t] = cached.data;
+    } else {
+      missingTickers.push(t);
+    }
+  }
+
+  if (missingTickers.length === 0) return result;
+
+  // 2. Tentar Brapi em lote para os que faltam
+  try {
+    console.log(`[Batch] Buscando ${missingTickers.length} tickers via Brapi Batch...`);
+    const bulkTickers = missingTickers.map(t => `${t}.SA`).join(',');
+    const response = await axios.get(`${BRAPI_API_BASE}/${bulkTickers}?token=${BRAPI_TOKEN}&modules=summaryProfile`);
+    
+    if (response.data && Array.isArray(response.data.results)) {
+      for (const quote of response.data.results) {
+        const t = (quote.symbol as string).replace('.SA', '');
+        const data = {
+          ticker: t,
+          currentPrice: quote.regularMarketPrice || 0,
+          name: quote.longName || t,
+          sector: normalizeSector(quote.summaryProfile?.sector || quote.summaryProfile?.industry),
+          dy12m: quote.dividendYield || 0,
+          pVP: quote.priceToBook || undefined,
+        };
+        
+        // Cachear e adicionar ao resultado
+        fiiDataCache[t] = { data, timestamp: Date.now() };
+        result[t] = data;
+      }
+    }
+  } catch (error) {
+    console.error('[Batch] Erro Brapi Batch:', (error as Error).message);
+  }
+
+  // 3. Fallback individual para os que ainda faltam
+  const remaining = missingTickers.filter(t => !result[t]);
+  if (remaining.length > 0) {
+    console.log(`[Batch] Fallback individual para ${remaining.length} ativos...`);
+    await Promise.all(remaining.map(async (t) => {
+      result[t] = await fetchFiiData(t);
+    }));
+  }
+
+  return result;
+}
 
 /**
  * 0. Anbima API v2 - Fonte Primária de VP e Dados Cadastrais
@@ -406,7 +487,7 @@ export async function searchFiiTickers(query: string): Promise<string[]> {
       if (response.data && Array.isArray(response.data.stocks)) {
         // Filtrar apenas o que parece FII (termina em 11 e às vezes extraído de outros tipos)
         cachedFiiTickers = response.data.stocks
-          .map((s: any) => s.stock)
+          .map((s: { stock: string }) => s.stock)
           .filter((ticker: string) => ticker.endsWith('11'));
         
         lastCacheUpdate = Date.now();
