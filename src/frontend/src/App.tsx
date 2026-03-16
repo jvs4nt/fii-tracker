@@ -6,11 +6,24 @@ import Holdings from './pages/Holdings';
 import Dividends from './pages/Dividends';
 import Analysis from './pages/Analysis';
 import Documentation from './pages/Documentation';
+import Assistant from './pages/Assistant';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     return !!localStorage.getItem('token');
   });
+  useEffect(() => {
+    const handleStorage = () => {
+      setIsAuthenticated(!!localStorage.getItem('token'));
+    };
+
+    window.addEventListener('storage', handleStorage);
+
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, []);
+
 
   useEffect(() => {
     const root = document.documentElement;
@@ -54,7 +67,7 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Login onLogin={() => setIsAuthenticated(true)} />} />
-          <Route path="*" element={<Navigate to="/" />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
     );
@@ -67,8 +80,9 @@ function App() {
         <Route path="/holdings" element={<Holdings />} />
         <Route path="/dividends" element={<Dividends />} />
         <Route path="/analysis" element={<Analysis />} />
+        <Route path="/assistant" element={<Assistant />} />
         <Route path="/documentation" element={<Documentation />} />
-        <Route path="*" element={<Navigate to="/dashboard" />} />
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </BrowserRouter>
   );

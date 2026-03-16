@@ -5,6 +5,7 @@ import authRoutes from './routes/auth.routes';
 import holdingRoutes from './routes/holding.routes';
 import dividendRoutes from './routes/dividend.routes';
 import fiiRoutes from './routes/fii.routes';
+import aiRoutes from './routes/ai.routes';
 
 dotenv.config();
 
@@ -39,6 +40,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/holdings', holdingRoutes);
 app.use('/api/dividends', dividendRoutes);
 app.use('/api/fii', fiiRoutes);
+app.use('/api/ai', aiRoutes);
 
 // Health check
 app.get('/health', (_req, res) => {

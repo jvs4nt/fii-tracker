@@ -1,7 +1,10 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useCallback, useMemo, useState } from 'react';
 import { dividendsApi } from '../api';
-import { DollarSign, Plus, Trash2, CheckCircle, LayoutDashboard, Wallet, TrendingUp, BookOpen } from 'lucide-react';
+import Layout from '../components/Layout';
+import { Plus, Trash2, CheckCircle } from 'lucide-react';
+import TickerInput from '../components/TickerInput';
+import { useAsyncData } from '../hooks/useAsyncData';
+import { useTickerSuggestions } from '../hooks/useTickerSuggestions';
 
 interface Dividend {
   id: string;
@@ -14,9 +17,6 @@ interface Dividend {
 }
 
 export default function Dividends() {
-  const navigate = useNavigate();
-  const [dividends, setDividends] = useState<Dividend[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({
     ticker: '',
@@ -25,20 +25,29 @@ export default function Dividends() {
     exDate: new Date().toISOString().split('T')[0],
     payDate: new Date().toISOString().split('T')[0],
   });
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const { suggestions } = useTickerSuggestions(formData.ticker);
 
-  useEffect(() => {
-    fetchDividends();
+  const fetchDividends = useCallback(async () => {
+    const response = await dividendsApi.getAll();
+    return response.data as Dividend[];
   }, []);
 
-  const fetchDividends = async () => {
-    try {
-      const response = await dividendsApi.getAll();
-      setDividends(response.data);
-    } catch (error) {
-      console.error('Erro ao buscar dividendos:', error);
-    } finally {
-      setLoading(false);
-    }
+  const {
+    data: dividendsData,
+    loading,
+    error,
+    reload: reloadDividends,
+  } = useAsyncData<Dividend[]>(fetchDividends);
+
+  const dividends = dividendsData ?? [];
+
+  const handleTickerChange = (ticker: string) => {
+    setFormData((prev) => ({ ...prev, ticker }));
+  };
+
+  const selectSuggestion = (s: string) => {
+    setFormData((prev) => ({ ...prev, ticker: s }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -61,7 +70,7 @@ export default function Dividends() {
         exDate: new Date().toISOString().split('T')[0],
         payDate: new Date().toISOString().split('T')[0],
       });
-      fetchDividends();
+      await reloadDividends();
     } catch (error) {
       console.error('Erro ao criar dividendo:', error);
     }
@@ -70,7 +79,7 @@ export default function Dividends() {
   const handleMarkReceived = async (id: string) => {
     try {
       await dividendsApi.markReceived(id);
-      fetchDividends();
+      await reloadDividends();
     } catch (error) {
       console.error('Erro ao marcar como recebido:', error);
     }
@@ -80,7 +89,7 @@ export default function Dividends() {
     if (confirm('Tem certeza que deseja deletar este dividendo?')) {
       try {
         await dividendsApi.delete(id);
-        fetchDividends();
+        await reloadDividends();
       } catch (error) {
         console.error('Erro ao deletar:', error);
       }
@@ -96,213 +105,184 @@ export default function Dividends() {
       payDate: new Date().toISOString().split('T')[0],
     });
     setShowModal(true);
+    setShowSuggestions(false);
   };
 
-  const pendingDividends = dividends.filter(d => d.status === 'pending');
-  const receivedDividends = dividends.filter(d => d.status === 'received');
+  const pendingDividends = useMemo(
+    () => dividends.filter((d) => d.status === 'pending'),
+    [dividends]
+  );
+  const receivedDividends = useMemo(
+    () => dividends.filter((d) => d.status === 'received'),
+    [dividends]
+  );
 
   const totalReceived = receivedDividends.reduce((sum, d) => sum + d.amount, 0);
   const totalPending = pendingDividends.reduce((sum, d) => sum + d.amount, 0);
 
   return (
-    <div className="app-container">
-      <aside className="sidebar">
-        <div className="sidebar-header">
-          <h2 className="sidebar-title">
-            <DollarSign size={24} />
-            FII Tracker
-          </h2>
+    <Layout 
+      title="Proventos" 
+      subtitle="Histórico e calendário de dividendos"
+      actions={
+        <button className="btn btn-primary" onClick={openNewModal}>
+          <Plus size={18} />
+          Adicionar Manualmente
+        </button>
+      }
+    >
+      <div className="cards-grid">
+        <div className="card">
+          <h3 className="card-title">Total Recebido</h3>
+          <p className="card-value">R$ {totalReceived.toFixed(2)}</p>
         </div>
-        <ul className="nav-menu">
-          <li className="nav-item" onClick={() => navigate('/dashboard')}>
-            <LayoutDashboard size={20} />
-            Dashboard
-          </li>
-          <li className="nav-item" onClick={() => navigate('/holdings')}>
-            <Wallet size={20} />
-            Carteira
-          </li>
-          <li className="nav-item active">
-            <DollarSign size={20} />
-            Proventos
-          </li>
-          <li className="nav-item" onClick={() => navigate('/analysis')}>
-            <TrendingUp size={20} />
-            Análise
-          </li>
-          <li className="nav-item" onClick={() => navigate('/documentation')}>
-            <BookOpen size={20} />
-            Documentação
-          </li>
-        </ul>
-      </aside>
 
-      <main className="main-content">
-        <div className="header-actions">
-          <div>
-            <h1 className="page-title">Proventos</h1>
-            <p className="page-subtitle">Histórico e calendário de dividendos</p>
+        <div className="card">
+          <h3 className="card-title">Total Pendente</h3>
+          <p className="card-value">R$ {totalPending.toFixed(2)}</p>
+        </div>
+
+        <div className="card">
+          <h3 className="card-title">Proventos Recebidos</h3>
+          <p className="card-value">{receivedDividends.length}</p>
+        </div>
+
+        <div className="card">
+          <h3 className="card-title">Proventos Pendentes</h3>
+          <p className="card-value">{pendingDividends.length}</p>
+        </div>
+      </div>
+
+      {loading ? (
+        <p>Carregando...</p>
+      ) : error ? (
+        <p>Nao foi possivel carregar os proventos.</p>
+      ) : pendingDividends.length === 0 && receivedDividends.length === 0 ? (
+        <div className="empty-state">
+          <div className="empty-state-icon">
+            <Plus size={64} style={{ opacity: 0.2 }} />
           </div>
+          <h3 className="empty-state-title">Nenhum provento cadastrado</h3>
+          <p className="empty-state-description">
+            Adicione proventos manualmente ou eles serão sincronizados automaticamente
+          </p>
           <button className="btn btn-primary" onClick={openNewModal}>
             <Plus size={18} />
-            Adicionar Manualmente
+            Adicionar Provento
           </button>
         </div>
-
-        <div className="cards-grid">
-          <div className="card">
-            <h3 className="card-title">Total Recebido</h3>
-            <p className="card-value">R$ {totalReceived.toFixed(2)}</p>
-          </div>
-
-          <div className="card">
-            <h3 className="card-title">Total Pendente</h3>
-            <p className="card-value">R$ {totalPending.toFixed(2)}</p>
-          </div>
-
-          <div className="card">
-            <h3 className="card-title">Proventos Recebidos</h3>
-            <p className="card-value">{receivedDividends.length}</p>
-          </div>
-
-          <div className="card">
-            <h3 className="card-title">Proventos Pendentes</h3>
-            <p className="card-value">{pendingDividends.length}</p>
-          </div>
-        </div>
-
-        {loading ? (
-          <p>Carregando...</p>
-        ) : pendingDividends.length === 0 && receivedDividends.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-state-icon">
-              <DollarSign size={64} />
-            </div>
-            <h3 className="empty-state-title">Nenhum provento cadastrado</h3>
-            <p className="empty-state-description">
-              Adicione proventos manualmente ou eles serão sincronizados automaticamente
-            </p>
-            <button className="btn btn-primary" onClick={openNewModal}>
-              <Plus size={18} />
-              Adicionar Provento
-            </button>
-          </div>
-        ) : (
-          <>
-            {pendingDividends.length > 0 && (
-              <div className="table-container" style={{ marginBottom: '2rem' }}>
-                <h3 style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border)' }}>
-                  Proventos Pendentes
-                </h3>
-                <table className="table">
-                  <thead>
-                    <tr>
-                      <th>FII</th>
-                      <th>Tipo</th>
-                      <th>Valor</th>
-                      <th>Data Ex</th>
-                      <th>Data Pagamento</th>
-                      <th>Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {pendingDividends.map((div) => (
-                      <tr key={div.id}>
-                        <td>{div.ticker}</td>
-                        <td>
-                          <span className="badge badge-info">{div.type}</span>
-                        </td>
-                        <td>R$ {div.amount.toFixed(2)}</td>
-                        <td>{new Date(div.exDate).toLocaleDateString('pt-BR')}</td>
-                        <td>
-                          {div.payDate ? new Date(div.payDate).toLocaleDateString('pt-BR') : 'N/A'}
-                        </td>
-                        <td>
-                          <div style={{ display: 'flex', gap: '0.5rem' }}>
-                            <button
-                              className="btn btn-primary btn-sm"
-                              onClick={() => handleMarkReceived(div.id)}
-                            >
-                              <CheckCircle size={14} />
-                              Recebido
-                            </button>
-                            <button
-                              className="btn btn-danger btn-sm"
-                              onClick={() => handleDelete(div.id)}
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            {receivedDividends.length > 0 && (
-              <div className="table-container">
-                <h3 style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border)' }}>
-                  Histórico de Proventos
-                </h3>
-                <table className="table">
-                  <thead>
-                    <tr>
-                      <th>FII</th>
-                      <th>Tipo</th>
-                      <th>Valor</th>
-                      <th>Data Ex</th>
-                      <th>Data Pagamento</th>
-                      <th>Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {receivedDividends.map((div) => (
-                      <tr key={div.id}>
-                        <td>{div.ticker}</td>
-                        <td>
-                          <span className="badge badge-success">{div.type}</span>
-                        </td>
-                        <td>R$ {div.amount.toFixed(2)}</td>
-                        <td>{new Date(div.exDate).toLocaleDateString('pt-BR')}</td>
-                        <td>
-                          {div.payDate ? new Date(div.payDate).toLocaleDateString('pt-BR') : 'N/A'}
-                        </td>
-                        <td>
+      ) : (
+        <>
+          {pendingDividends.length > 0 && (
+            <div className="table-container" style={{ marginBottom: '2rem' }}>
+              <h3 style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border)' }}>
+                Proventos Pendentes
+              </h3>
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>FII</th>
+                    <th>Tipo</th>
+                    <th>Valor</th>
+                    <th>Data Ex</th>
+                    <th>Data Pagamento</th>
+                    <th>Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pendingDividends.map((div) => (
+                    <tr key={div.id}>
+                      <td>{div.ticker}</td>
+                      <td>
+                        <span className="badge badge-info">{div.type}</span>
+                      </td>
+                      <td>R$ {div.amount.toFixed(2)}</td>
+                      <td>{new Date(div.exDate).toLocaleDateString('pt-BR')}</td>
+                      <td>
+                        {div.payDate ? new Date(div.payDate).toLocaleDateString('pt-BR') : 'N/A'}
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          <button
+                            className="btn btn-primary btn-sm"
+                            onClick={() => handleMarkReceived(div.id)}
+                          >
+                            <CheckCircle size={14} />
+                            Recebido
+                          </button>
                           <button
                             className="btn btn-danger btn-sm"
                             onClick={() => handleDelete(div.id)}
                           >
                             <Trash2 size={14} />
                           </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </>
-        )}
-      </main>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {receivedDividends.length > 0 && (
+            <div className="table-container">
+              <h3 style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border)' }}>
+                Histórico de Proventos
+              </h3>
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>FII</th>
+                    <th>Tipo</th>
+                    <th>Valor</th>
+                    <th>Data Ex</th>
+                    <th>Data Pagamento</th>
+                    <th>Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {receivedDividends.map((div) => (
+                    <tr key={div.id}>
+                      <td>{div.ticker}</td>
+                      <td>
+                        <span className="badge badge-success">{div.type}</span>
+                      </td>
+                      <td>R$ {div.amount.toFixed(2)}</td>
+                      <td>{new Date(div.exDate).toLocaleDateString('pt-BR')}</td>
+                      <td>
+                        {div.payDate ? new Date(div.payDate).toLocaleDateString('pt-BR') : 'N/A'}
+                      </td>
+                      <td>
+                        <button
+                          className="btn btn-danger btn-sm"
+                          onClick={() => handleDelete(div.id)}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
+      )}
 
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <h3 className="modal-title">Adicionar Provento</h3>
             <form onSubmit={handleSubmit}>
-              <div className="form-group">
-                <label className="form-label">Ticker do FII</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={formData.ticker}
-                  onChange={(e) => setFormData({ ...formData, ticker: e.target.value.toUpperCase() })}
-                  placeholder="HGLG11"
-                  required
-                />
-              </div>
+              <TickerInput
+                value={formData.ticker}
+                onChange={handleTickerChange}
+                onSelect={selectSuggestion}
+                suggestions={suggestions}
+                showSuggestions={showSuggestions}
+                setShowSuggestions={setShowSuggestions}
+              />
               <div className="form-group">
                 <label className="form-label">Valor (R$)</label>
                 <input
@@ -348,7 +328,14 @@ export default function Dividends() {
                 />
               </div>
               <div className="form-actions">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    setShowModal(false);
+                    setShowSuggestions(false);
+                  }}
+                >
                   Cancelar
                 </button>
                 <button type="submit" className="btn btn-primary">
@@ -359,8 +346,7 @@ export default function Dividends() {
           </div>
         </div>
       )}
-    </div>
+    </Layout>
   );
 }
-
 

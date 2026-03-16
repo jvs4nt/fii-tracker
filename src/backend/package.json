@@ -1,7 +1,7 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "description": "FII Tracker API",
+  "description": "InvesteIA API",
   "main": "dist/server.js",
   "scripts": {
     "dev": "nodemon src/server.ts",

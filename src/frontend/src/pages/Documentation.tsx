@@ -1,15 +1,15 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { LayoutDashboard, TrendingUp, DollarSign, Wallet, BookOpen, Globe, Info, Target, Lightbulb, Code } from 'lucide-react';
+import Layout from '../components/Layout';
+import { Globe, Info, Target, Lightbulb, Code } from 'lucide-react';
 
 const docContent = {
   PT: {
     overview: `
-# 📈 FII Tracker - Manual do Usuário
+# 📈 InvesteIA - Manual do Usuário
 
-Bem-vindo ao **FII Tracker**, a sua plataforma definitiva para gerenciamento de Fundos de Investimentos Imobiliários. Nosso objetivo é simplificar o acompanhamento da sua carteira, proventos e fornecer *insights* valiosos.
+Bem-vindo ao **InvesteIA**, a sua plataforma definitiva para gerenciamento de Fundos de Investimentos Imobiliários. Nosso objetivo é simplificar o acompanhamento da sua carteira, proventos e fornecer *insights* valiosos.
 
 ## 🧭 Como Navegar
 A aplicação é dividida em quatro áreas principais:
@@ -24,7 +24,7 @@ A aplicação é dividida em quatro áreas principais:
     analysis: `
 ## 🧠 Como Funciona a "Análise Inteligente"?
 
-O FII Tracker utiliza integrações em tempo real (via *Brapi.dev*) para obter cotações atualizadas da B3. As recomendações geradas na aba **Análise** seguem a seguinte lógica baseada no **P/VP (Preço sobre Valor Patrimonial)**:
+O InvesteIA utiliza integrações em tempo real (via *Brapi.dev*) para obter cotações atualizadas da B3. As recomendações geradas na aba **Análise** seguem a seguinte lógica baseada no **P/VP (Preço sobre Valor Patrimonial)**:
 
 > **P/VP < 0.95**: 🟢 **Indicação de Compra** - O fundo está sendo negociado com "desconto", abaixo do seu valor justo de patrimônio.
 >
@@ -41,7 +41,7 @@ O FII Tracker utiliza integrações em tempo real (via *Brapi.dev*) para obter c
     tech: `
 ## 🛠️ Stack Tecnológica
 
-O sistema FII Tracker foi construído utilizando tecnologias modernas e robustas:
+O sistema InvesteIA foi construído utilizando tecnologias modernas e robustas:
 
 * **Frontend:** \`React\`, \`TypeScript\`, \`Vite\`, \`Recharts\` (para os gráficos), e \`Lucide-react\` (iconografia).
 * **Backend:** \`Node.js\`, \`Express\`, \`Prisma ORM\` (com banco \`SQLite\`), \`JWT\` e \`bcrypt\` (segurança de dados).
@@ -50,9 +50,9 @@ O sistema FII Tracker foi construído utilizando tecnologias modernas e robustas
   },
   EN: {
     overview: `
-# 📈 FII Tracker - User Manual
+# 📈 InvesteIA - User Manual
 
-Welcome to **FII Tracker**, your definitive platform for Real Estate Investment Trusts (FIIs) management. Our goal is to simplify tracking your portfolio, dividends, and provide valuable *insights*.
+Welcome to **InvesteIA**, your definitive platform for Real Estate Investment Trusts (FIIs) management. Our goal is to simplify tracking your portfolio, dividends, and provide valuable *insights*.
 
 ## 🧭 How to Navigate
 The application is divided into four main areas:
@@ -67,7 +67,7 @@ The application is divided into four main areas:
     analysis: `
 ## 🧠 How does "Smart Analysis" work?
 
-FII Tracker uses real-time integrations (via *Brapi.dev*) to fetch updated B3 quotes. The recommendations generated on the **Analysis** tab follow this logic based on the **P/VP (Price to Book Value Ratio)**:
+InvesteIA uses real-time integrations (via *Brapi.dev*) to fetch updated B3 quotes. The recommendations generated on the **Analysis** tab follow this logic based on the **P/VP (Price to Book Value Ratio)**:
 
 > **P/VP < 0.95**: 🟢 **Buy Recommendation** - The fund is trading at a "discount", below its fair book value.
 >
@@ -84,7 +84,7 @@ FII Tracker uses real-time integrations (via *Brapi.dev*) to fetch updated B3 qu
     tech: `
 ## 🛠️ Tech Stack
 
-The FII Tracker system is built using modern and robust technologies:
+The InvesteIA system is built using modern and robust technologies:
 
 * **Frontend:** \`React\`, \`TypeScript\`, \`Vite\`, \`Recharts\` (for charts), and \`Lucide-react\` (iconography).
 * **Backend:** \`Node.js\`, \`Express\`, \`Prisma ORM\` (with \`SQLite\` database), \`JWT\`, and \`bcrypt\` (data security).
@@ -96,7 +96,6 @@ The FII Tracker system is built using modern and robust technologies:
 type TabType = 'overview' | 'analysis' | 'tips' | 'tech';
 
 export default function Documentation() {
-  const navigate = useNavigate();
   const [language, setLanguage] = useState<'PT' | 'EN'>('PT');
   const [activeTab, setActiveTab] = useState<TabType>('overview');
 
@@ -108,77 +107,40 @@ export default function Documentation() {
   ];
 
   return (
-    <div className="app-container">
-      <aside className="sidebar">
-        <div className="sidebar-header">
-          <h2 className="sidebar-title">
-            <BookOpen size={24} />
-            FII Tracker
-          </h2>
-        </div>
-        <ul className="nav-menu">
-          <li className="nav-item" onClick={() => navigate('/dashboard')}>
-            <LayoutDashboard size={20} />
-            Dashboard
-          </li>
-          <li className="nav-item" onClick={() => navigate('/holdings')}>
-            <Wallet size={20} />
-            Carteira
-          </li>
-          <li className="nav-item" onClick={() => navigate('/dividends')}>
-            <DollarSign size={20} />
-            Proventos
-          </li>
-          <li className="nav-item" onClick={() => navigate('/analysis')}>
-            <TrendingUp size={20} />
-            Análise
-          </li>
-          <li className="nav-item active">
-            <BookOpen size={20} />
-            Documentação
-          </li>
-        </ul>
-      </aside>
-
-      <main className="main-content">
-        <div className="header-actions">
-          <div>
-            <h1 className="page-title">{language === 'PT' ? 'Documentação' : 'Documentation'}</h1>
-            <p className="page-subtitle">
-              {language === 'PT' ? 'Sobre o sistema FII Tracker' : 'About the FII Tracker system'}
-            </p>
-          </div>
-          <button 
-            className="btn btn-secondary" 
-            onClick={() => setLanguage(lang => lang === 'PT' ? 'EN' : 'PT')}
-            style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+    <Layout 
+      title={language === 'PT' ? 'Documentação' : 'Documentation'} 
+      subtitle={language === 'PT' ? 'Sobre o sistema InvesteIA' : 'About the InvesteIA system'}
+      actions={
+        <button 
+          className="btn btn-secondary" 
+          onClick={() => setLanguage(lang => lang === 'PT' ? 'EN' : 'PT')}
+          style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+        >
+          <Globe size={18} />
+          {language === 'PT' ? 'Read in English' : 'Ler em Português'}
+        </button>
+      }
+    >
+      <div className="docs-tabs" style={{ marginTop: '2rem' }}>
+        {tabs.map(tab => (
+          <button
+            key={tab.id}
+            className={`docs-tab ${activeTab === tab.id ? 'active' : ''}`}
+            onClick={() => setActiveTab(tab.id)}
           >
-            <Globe size={18} />
-            {language === 'PT' ? 'Read in English' : 'Ler em Português'}
+            {tab.icon}
+            {language === 'PT' ? tab.labelPT : tab.labelEN}
           </button>
-        </div>
+        ))}
+      </div>
 
-        <div className="docs-tabs" style={{ marginTop: '2rem' }}>
-          {tabs.map(tab => (
-            <button
-              key={tab.id}
-              className={`docs-tab ${activeTab === tab.id ? 'active' : ''}`}
-              onClick={() => setActiveTab(tab.id)}
-            >
-              {tab.icon}
-              {language === 'PT' ? tab.labelPT : tab.labelEN}
-            </button>
-          ))}
+      <div className="card tab-content" style={{ marginTop: '1.5rem' }}>
+        <div className="markdown-body" style={{ lineHeight: '1.6' }}>
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            {docContent[language][activeTab]}
+          </ReactMarkdown>
         </div>
-
-        <div className="card tab-content" style={{ marginTop: '1.5rem' }}>
-          <div className="markdown-body" style={{ lineHeight: '1.6' }}>
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {docContent[language][activeTab]}
-            </ReactMarkdown>
-          </div>
-        </div>
-      </main>
-    </div>
+      </div>
+    </Layout>
   );
 }

@@ -1,7 +1,10 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useCallback, useState } from 'react';
 import { holdingsApi, fiiApi } from '../api';
-import { Wallet, Plus, Edit2, Trash2, LayoutDashboard, DollarSign, TrendingUp, BookOpen } from 'lucide-react';
+import Layout from '../components/Layout';
+import { Plus, Edit2, Trash2 } from 'lucide-react';
+import TickerInput from '../components/TickerInput';
+import { useAsyncData } from '../hooks/useAsyncData';
+import { useTickerSuggestions } from '../hooks/useTickerSuggestions';
 
 interface Holding {
   id: string;
@@ -16,9 +19,6 @@ interface Holding {
 }
 
 export default function Holdings() {
-  const navigate = useNavigate();
-  const [holdings, setHoldings] = useState<Holding[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingHolding, setEditingHolding] = useState<Holding | null>(null);
   const [formData, setFormData] = useState({
@@ -27,34 +27,29 @@ export default function Holdings() {
     avgPrice: '',
     purchaseDate: new Date().toISOString().split('T')[0],
   });
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const { suggestions } = useTickerSuggestions(formData.ticker);
 
-  useEffect(() => {
-    fetchHoldings();
+  const fetchHoldings = useCallback(async () => {
+    const response = await fiiApi.getAnalysis();
+    return response.data as Holding[];
   }, []);
 
-  const fetchHoldings = async () => {
-    try {
-      const response = await holdingsApi.getAll();
-      const holdingsData = response.data;
+  const {
+    data: holdingsData,
+    loading,
+    error,
+    reload: reloadHoldings,
+  } = useAsyncData<Holding[]>(fetchHoldings);
 
-      // Fetch current data for each holding
-      const holdingsWithQuotes = await Promise.all(
-        holdingsData.map(async (h: Holding) => {
-          try {
-            const quote = await fiiApi.getQuote(h.ticker);
-            return { ...h, ...quote.data };
-          } catch {
-            return h;
-          }
-        })
-      );
+  const holdings = holdingsData ?? [];
 
-      setHoldings(holdingsWithQuotes);
-    } catch (error) {
-      console.error('Erro ao buscar holdings:', error);
-    } finally {
-      setLoading(false);
-    }
+  const handleTickerChange = (ticker: string) => {
+    setFormData((prev) => ({ ...prev, ticker }));
+  };
+
+  const selectSuggestion = (s: string) => {
+    setFormData((prev) => ({ ...prev, ticker: s }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -85,7 +80,7 @@ export default function Holdings() {
         avgPrice: '',
         purchaseDate: new Date().toISOString().split('T')[0],
       });
-      fetchHoldings();
+      await reloadHoldings();
     } catch (error) {
       console.error('Erro ao salvar holding:', error);
     }
@@ -106,7 +101,7 @@ export default function Holdings() {
     if (confirm('Tem certeza que deseja deletar esta holding?')) {
       try {
         await holdingsApi.delete(id);
-        fetchHoldings();
+        await reloadHoldings();
       } catch (error) {
         console.error('Erro ao deletar:', error);
       }
@@ -122,121 +117,89 @@ export default function Holdings() {
       purchaseDate: new Date().toISOString().split('T')[0],
     });
     setShowModal(true);
+    setShowSuggestions(false);
   };
 
   return (
-    <div className="app-container">
-      <aside className="sidebar">
-        <div className="sidebar-header">
-          <h2 className="sidebar-title">
-            <Wallet size={24} />
-            FII Tracker
-          </h2>
-        </div>
-        <ul className="nav-menu">
-          <li className="nav-item" onClick={() => navigate('/dashboard')}>
-            <LayoutDashboard size={20} />
-            Dashboard
-          </li>
-          <li className="nav-item active">
-            <Wallet size={20} />
-            Carteira
-          </li>
-          <li className="nav-item" onClick={() => navigate('/dividends')}>
-            <DollarSign size={20} />
-            Proventos
-          </li>
-          <li className="nav-item" onClick={() => navigate('/analysis')}>
-            <TrendingUp size={20} />
-            Análise
-          </li>
-          <li className="nav-item" onClick={() => navigate('/documentation')}>
-            <BookOpen size={20} />
-            Documentação
-          </li>
-        </ul>
-      </aside>
-
-      <main className="main-content">
-        <div className="header-actions">
-          <div>
-            <h1 className="page-title">Minha Carteira</h1>
-            <p className="page-subtitle">Gerencie seus fundos imobiliários</p>
+    <Layout 
+      title="Minha Carteira" 
+      subtitle="Gerencie seus fundos imobiliários"
+      actions={
+        <button className="btn btn-primary" onClick={openNewModal}>
+          <Plus size={18} />
+          Adicionar FII
+        </button>
+      }
+    >
+      {loading ? (
+        <p>Carregando...</p>
+      ) : error ? (
+        <p>Nao foi possivel carregar a carteira.</p>
+      ) : holdings.length === 0 ? (
+        <div className="empty-state">
+          <div className="empty-state-icon">
+            <Plus size={64} style={{ opacity: 0.2 }} />
           </div>
+          <h3 className="empty-state-title">Nenhum FII cadastrado</h3>
+          <p className="empty-state-description">
+            Comece adicionando seu primeiro fundo imobiliário
+          </p>
           <button className="btn btn-primary" onClick={openNewModal}>
             <Plus size={18} />
             Adicionar FII
           </button>
         </div>
-
-        {loading ? (
-          <p>Carregando...</p>
-        ) : holdings.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-state-icon">
-              <Wallet size={64} />
-            </div>
-            <h3 className="empty-state-title">Nenhum FII cadastrado</h3>
-            <p className="empty-state-description">
-              Comece adicionando seu primeiro fundo imobiliário
-            </p>
-            <button className="btn btn-primary" onClick={openNewModal}>
-              <Plus size={18} />
-              Adicionar FII
-            </button>
-          </div>
-        ) : (
-          <div className="holdings-grid">
-            {holdings.map((holding) => (
-              <div key={holding.id} className="holding-card">
-                <div className="holding-header">
-                  <div>
-                    <h3 className="holding-ticker">{holding.ticker}</h3>
-                    <p className="holding-name">{holding.sector || 'Setor não disponível'}</p>
-                  </div>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button className="btn btn-secondary btn-sm" onClick={() => handleEdit(holding)}>
-                      <Edit2 size={14} />
-                    </button>
-                    <button className="btn btn-danger btn-sm" onClick={() => handleDelete(holding.id)}>
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
+      ) : (
+        <div className="holdings-grid">
+          {holdings.map((holding) => (
+            <div key={holding.id} className="holding-card">
+              <div className="holding-header">
+                <div>
+                  <h3 className="holding-ticker">{holding.ticker}</h3>
+                  <p className="holding-name">{holding.sector || 'Setor não disponível'}</p>
                 </div>
-
-                <div className="holding-stats">
-                  <div className="stat-item">
-                    <span className="stat-label">Quantidade</span>
-                    <span className="stat-value">{holding.quantity} cotas</span>
-                  </div>
-                  <div className="stat-item">
-                    <span className="stat-label">Preço Médio</span>
-                    <span className="stat-value">R$ {holding.avgPrice.toFixed(2)}</span>
-                  </div>
-                  <div className="stat-item">
-                    <span className="stat-label">Cotação Atual</span>
-                    <span className="stat-value">R$ {holding.currentPrice?.toFixed(2) || 'N/A'}</span>
-                  </div>
-                  <div className="stat-item">
-                    <span className="stat-label">P/VP</span>
-                    <span className="stat-value">{holding.pVP?.toFixed(2) || 'N/A'}</span>
-                  </div>
-                  <div className="stat-item">
-                    <span className="stat-label">DY (12M)</span>
-                    <span className="stat-value">{holding.dy12m?.toFixed(2) || 0}%</span>
-                  </div>
-                  <div className="stat-item">
-                    <span className="stat-label">Valor Atual</span>
-                    <span className="stat-value">
-                      R$ {(holding.quantity * (holding.currentPrice || holding.avgPrice)).toFixed(2)}
-                    </span>
-                  </div>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button className="btn btn-secondary btn-sm" onClick={() => handleEdit(holding)}>
+                    <Edit2 size={14} />
+                  </button>
+                  <button className="btn btn-danger btn-sm" onClick={() => handleDelete(holding.id)}>
+                    <Trash2 size={14} />
+                  </button>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-      </main>
+
+              <div className="holding-stats">
+                <div className="stat-item">
+                  <span className="stat-label">Quantidade</span>
+                  <span className="stat-value">{holding.quantity} cotas</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">Preço Médio</span>
+                  <span className="stat-value">R$ {holding.avgPrice.toFixed(2)}</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">Cotação Atual</span>
+                  <span className="stat-value">R$ {holding.currentPrice?.toFixed(2) || 'N/A'}</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">P/VP</span>
+                  <span className="stat-value">{holding.pVP?.toFixed(2) || 'N/A'}</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">DY (12M)</span>
+                  <span className="stat-value">{holding.dy12m?.toFixed(2) || 0}%</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">Valor Atual</span>
+                  <span className="stat-value">
+                    R$ {(holding.quantity * (holding.currentPrice || holding.avgPrice)).toFixed(2)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
@@ -245,17 +208,14 @@ export default function Holdings() {
               {editingHolding ? 'Editar FII' : 'Novo FII'}
             </h3>
             <form onSubmit={handleSubmit}>
-              <div className="form-group">
-                <label className="form-label">Ticker</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={formData.ticker}
-                  onChange={(e) => setFormData({ ...formData, ticker: e.target.value.toUpperCase() })}
-                  placeholder="HGLG11"
-                  required
-                />
-              </div>
+              <TickerInput
+                value={formData.ticker}
+                onChange={handleTickerChange}
+                onSelect={selectSuggestion}
+                suggestions={suggestions}
+                showSuggestions={showSuggestions}
+                setShowSuggestions={setShowSuggestions}
+              />
               <div className="form-group">
                 <label className="form-label">Quantidade de Cotas</label>
                 <input
@@ -293,7 +253,14 @@ export default function Holdings() {
                 />
               </div>
               <div className="form-actions">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    setShowModal(false);
+                    setShowSuggestions(false);
+                  }}
+                >
                   Cancelar
                 </button>
                 <button type="submit" className="btn btn-primary">
@@ -304,8 +271,7 @@ export default function Holdings() {
           </div>
         </div>
       )}
-    </div>
+    </Layout>
   );
 }
-
 

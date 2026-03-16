@@ -1,4 +1,4 @@
-# FII Tracker 📈
+# InvesteIA 📈
 
 A complete web application to track and manage your Brazilian Real Estate Investment Trusts (FII - Fundos de Investimento Imobiliário) portfolio, dividends, and get smart recommendations based on real-time data.
 
