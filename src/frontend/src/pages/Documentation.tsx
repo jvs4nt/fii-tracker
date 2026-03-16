@@ -171,7 +171,7 @@ export default function Documentation() {
           ))}
         </div>
 
-        <div className="card tab-content">
+        <div className="card tab-content" style={{ marginTop: '1.5rem' }}>
           <div className="markdown-body" style={{ lineHeight: '1.6' }}>
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
               {docContent[language][activeTab]}
