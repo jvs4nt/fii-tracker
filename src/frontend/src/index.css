@@ -555,6 +555,10 @@ select.form-input {
   margin-bottom: 1.5rem;
 }
 
+.brand-accent {
+  color: var(--primary);
+}
+
 .login-tabs {
   display: flex;
   gap: 0.5rem;
@@ -706,6 +710,10 @@ select.form-input {
   display: flex;
   gap: 0.7rem;
   flex-wrap: wrap;
+}
+
+.tab-content {
+  padding: 1.8rem;
 }
 
 .docs-tab {

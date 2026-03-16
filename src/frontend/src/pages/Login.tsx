@@ -36,7 +36,9 @@ export default function Login({ onLogin }: LoginProps) {
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
           <ChartPie size={48} color="#10b981" />
         </div>
-        <h1 className="login-title">InvesteIA</h1>
+        <h1 className="login-title">
+          Investe<span className="brand-accent">IA</span>
+        </h1>
         <p className="login-subtitle">Gestão de carteira de Fundos Imobiliários</p>
 
         <div className="login-tabs">

@@ -36,7 +36,9 @@ export default function Sidebar() {
         <div className="sidebar-header">
           <h2 className="sidebar-title">
             <ChartPie size={24} />
-            InvesteIA
+            <span>
+              Investe<span className="brand-accent">IA</span>
+            </span>
           </h2>
           {/* Close button inside sidebar for mobile */}
           <button className="mobile-close-btn" onClick={toggleMenu}>
