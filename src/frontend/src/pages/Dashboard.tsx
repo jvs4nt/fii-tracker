@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useMemo } from 'react';
 import { fiiApi } from '../api';
 import Layout from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
+import { useAsyncData } from '../hooks/useAsyncData';
 
 interface DashboardData {
   totalInvested: number;
@@ -23,23 +24,26 @@ interface DashboardData {
 }
 
 export default function Dashboard() {
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchDashboard();
+  const fetchDashboard = useCallback(async () => {
+    const response = await fiiApi.getDashboard();
+    return response.data as unknown as DashboardData;
   }, []);
 
-  const fetchDashboard = async () => {
-    try {
-      const response = await fiiApi.getDashboard();
-      setData(response.data);
-    } catch (error) {
-      console.error('Erro ao buscar dashboard:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data, loading, error } = useAsyncData<DashboardData>(fetchDashboard);
+
+  const COLORS = ['#10b981', '#6366f1', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+
+  const sectorData = useMemo(
+    () =>
+      Object.entries(
+        (data?.holdings || []).reduce((acc, h) => {
+          const sector = h.sector || 'Outros';
+          acc[sector] = (acc[sector] || 0) + h.currentValue;
+          return acc;
+        }, {} as Record<string, number>)
+      ).map(([name, value]) => ({ name, value })),
+    [data?.holdings]
+  );
 
   if (loading) {
     return (
@@ -49,23 +53,13 @@ export default function Dashboard() {
     );
   }
 
-  if (!data) {
+  if (!data || error) {
     return (
       <Layout title="Dashboard" subtitle="Não foi possível carregar os dados ou ocorreu um erro.">
         <p>Tente novamente mais tarde.</p>
       </Layout>
     );
   }
-
-  const COLORS = ['#10b981', '#6366f1', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
-
-  const sectorData = Object.entries(
-    (data.holdings || []).reduce((acc, h) => {
-      const sector = h.sector || 'Outros';
-      acc[sector] = (acc[sector] || 0) + h.currentValue;
-      return acc;
-    }, {} as Record<string, number>)
-  ).map(([name, value]) => ({ name, value }));
 
   return (
     <Layout title="Dashboard" subtitle="Visão geral da sua carteira">

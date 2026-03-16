@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fiiApi } from '../api';
 import Layout from '../components/Layout';
 import { TrendingUp, ThumbsUp, ThumbsDown, Minus } from 'lucide-react';
+import { useAsyncData } from '../hooks/useAsyncData';
 
 interface AnalysisData {
   ticker: string;
@@ -21,23 +22,19 @@ interface AnalysisData {
 
 export default function Analysis() {
   const navigate = useNavigate();
-  const [analysis, setAnalysis] = useState<AnalysisData[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchAnalysis();
+  const fetchAnalysis = useCallback(async () => {
+    const response = await fiiApi.getAnalysis();
+    return response.data as AnalysisData[];
   }, []);
 
-  const fetchAnalysis = async () => {
-    try {
-      const response = await fiiApi.getAnalysis();
-      setAnalysis(response.data);
-    } catch (error) {
-      console.error('Erro ao buscar análise:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const {
+    data: analysisData,
+    loading,
+    error,
+    reload: reloadAnalysis,
+  } = useAsyncData<AnalysisData[]>(fetchAnalysis);
+
+  const analysis = analysisData ?? [];
 
   const getRecommendationIcon = (rec: string) => {
     switch (rec) {
@@ -72,22 +69,33 @@ export default function Analysis() {
     }
   };
 
-  const buyRecommendations = analysis.filter(a => a.recommendation === 'comprar');
-  const holdRecommendations = analysis.filter(a => a.recommendation === 'manter');
-  const sellRecommendations = analysis.filter(a => a.recommendation === 'vender');
+  const buyRecommendations = useMemo(
+    () => analysis.filter((a) => a.recommendation === 'comprar'),
+    [analysis]
+  );
+  const holdRecommendations = useMemo(
+    () => analysis.filter((a) => a.recommendation === 'manter'),
+    [analysis]
+  );
+  const sellRecommendations = useMemo(
+    () => analysis.filter((a) => a.recommendation === 'vender'),
+    [analysis]
+  );
 
   return (
     <Layout 
       title="Análise da Carteira" 
       subtitle="Recomendações baseadas em indicadores"
       actions={
-        <button className="btn btn-secondary" onClick={fetchAnalysis}>
+        <button className="btn btn-secondary" onClick={() => void reloadAnalysis()}>
           Atualizar
         </button>
       }
     >
       {loading ? (
         <p>Carregando...</p>
+      ) : error ? (
+        <p>Nao foi possivel carregar a analise.</p>
       ) : analysis.length === 0 ? (
         <div className="empty-state">
           <div className="empty-state-icon">
@@ -95,7 +103,7 @@ export default function Analysis() {
           </div>
           <h3 className="empty-state-title">Nenhum FII para analisar</h3>
           <p className="empty-state-description">
-            Adicione FIIs à sua carteira para ver a análise
+            Adicione FIIs a sua carteira para ver a analise
           </p>
           <button className="btn btn-primary" onClick={() => navigate('/holdings')}>
             Adicionar FII
@@ -119,7 +127,7 @@ export default function Analysis() {
             </div>
 
             <div className="card">
-              <h3 className="card-title">Sobrepreçados</h3>
+              <h3 className="card-title">Sobreprecados</h3>
               <p className="card-value" style={{ color: 'var(--danger)' }}>
                 {sellRecommendations.length}
               </p>
@@ -132,7 +140,7 @@ export default function Analysis() {
                 <div className="holding-header">
                   <div>
                     <h3 className="holding-ticker">{item.ticker}</h3>
-                    <p className="holding-name">{item.sector || 'Setor não disponível'}</p>
+                    <p className="holding-name">{item.sector || 'Setor nao disponivel'}</p>
                   </div>
                   <span
                     className={`recommendation-badge ${getRecommendationClass(item.recommendation)}`}
@@ -147,7 +155,7 @@ export default function Analysis() {
                     <span className="stat-label">P/VP</span>
                     <span className="stat-value">
                       {item.pVP?.toFixed(2)}
-                      {item.pVP && item.pVP < 1 ? ' (Desconto)' : item.pVP && item.pVP > 1 ? ' (Ágio)' : ''}
+                      {item.pVP && item.pVP < 1 ? ' (Desconto)' : item.pVP && item.pVP > 1 ? ' (Agio)' : ''}
                     </span>
                   </div>
                   <div className="stat-item">
@@ -155,11 +163,11 @@ export default function Analysis() {
                     <span className="stat-value">{item.dy12m?.toFixed(2)}%</span>
                   </div>
                   <div className="stat-item">
-                    <span className="stat-label">Cotação</span>
+                    <span className="stat-label">Cotacao</span>
                     <span className="stat-value">R$ {item.currentPrice?.toFixed(2)}</span>
                   </div>
                   <div className="stat-item">
-                    <span className="stat-label">P. Médio</span>
+                    <span className="stat-label">P. Medio</span>
                     <span className="stat-value">R$ {item.avgPrice.toFixed(2)}</span>
                   </div>
                   <div className="stat-item">
@@ -176,11 +184,11 @@ export default function Analysis() {
                 </div>
 
                 <div className="recommendation">
-                  <p className="recommendation-label">Indicação baseada no P/VP</p>
+                  <p className="recommendation-label">Indicacao baseada no P/VP</p>
                   <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-                    {item.pVP && item.pVP < 0.95 && 'FII está com desconto em relação ao valor patrimonial.'}
-                    {item.pVP && item.pVP >= 0.95 && item.pVP <= 1.05 && 'FII está próximo do valor patrimonial.'}
-                    {item.pVP && item.pVP > 1.05 && 'FII está sobrepreçado em relação ao valor patrimonial.'}
+                    {item.pVP && item.pVP < 0.95 && 'FII esta com desconto em relacao ao valor patrimonial.'}
+                    {item.pVP && item.pVP >= 0.95 && item.pVP <= 1.05 && 'FII esta proximo do valor patrimonial.'}
+                    {item.pVP && item.pVP > 1.05 && 'FII esta sobreprecado em relacao ao valor patrimonial.'}
                   </p>
                 </div>
               </div>

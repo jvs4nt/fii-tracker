@@ -1,7 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useState } from 'react';
 import { holdingsApi, fiiApi } from '../api';
 import Layout from '../components/Layout';
 import { Plus, Edit2, Trash2 } from 'lucide-react';
+import TickerInput from '../components/TickerInput';
+import { useAsyncData } from '../hooks/useAsyncData';
+import { useTickerSuggestions } from '../hooks/useTickerSuggestions';
 
 interface Holding {
   id: string;
@@ -16,8 +19,6 @@ interface Holding {
 }
 
 export default function Holdings() {
-  const [holdings, setHoldings] = useState<Holding[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingHolding, setEditingHolding] = useState<Holding | null>(null);
   const [formData, setFormData] = useState({
@@ -26,48 +27,29 @@ export default function Holdings() {
     avgPrice: '',
     purchaseDate: new Date().toISOString().split('T')[0],
   });
-  const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const { suggestions } = useTickerSuggestions(formData.ticker);
 
-  useEffect(() => {
-    fetchHoldings();
+  const fetchHoldings = useCallback(async () => {
+    const response = await fiiApi.getAnalysis();
+    return response.data as Holding[];
   }, []);
 
-  const fetchSuggestions = async (query: string) => {
-    if (query.length < 2) {
-      setSuggestions([]);
-      return;
-    }
-    try {
-      const response = await fiiApi.search(query);
-      setSuggestions(response.data);
-    } catch (error) {
-      console.error('Erro ao buscar sugestões:', error);
-    }
-  };
+  const {
+    data: holdingsData,
+    loading,
+    error,
+    reload: reloadHoldings,
+  } = useAsyncData<Holding[]>(fetchHoldings);
 
-  const handleTickerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value.toUpperCase();
-    setFormData({ ...formData, ticker: val });
-    fetchSuggestions(val);
-    setShowSuggestions(true);
+  const holdings = holdingsData ?? [];
+
+  const handleTickerChange = (ticker: string) => {
+    setFormData((prev) => ({ ...prev, ticker }));
   };
 
   const selectSuggestion = (s: string) => {
-    setFormData({ ...formData, ticker: s });
-    setSuggestions([]);
-    setShowSuggestions(false);
-  };
-
-  const fetchHoldings = async () => {
-    try {
-      const response = await fiiApi.getAnalysis();
-      setHoldings(response.data);
-    } catch (error) {
-      console.error('Erro ao buscar holdings:', error);
-    } finally {
-      setLoading(false);
-    }
+    setFormData((prev) => ({ ...prev, ticker: s }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -98,7 +80,7 @@ export default function Holdings() {
         avgPrice: '',
         purchaseDate: new Date().toISOString().split('T')[0],
       });
-      fetchHoldings();
+      await reloadHoldings();
     } catch (error) {
       console.error('Erro ao salvar holding:', error);
     }
@@ -119,7 +101,7 @@ export default function Holdings() {
     if (confirm('Tem certeza que deseja deletar esta holding?')) {
       try {
         await holdingsApi.delete(id);
-        fetchHoldings();
+        await reloadHoldings();
       } catch (error) {
         console.error('Erro ao deletar:', error);
       }
@@ -135,6 +117,7 @@ export default function Holdings() {
       purchaseDate: new Date().toISOString().split('T')[0],
     });
     setShowModal(true);
+    setShowSuggestions(false);
   };
 
   return (
@@ -150,6 +133,8 @@ export default function Holdings() {
     >
       {loading ? (
         <p>Carregando...</p>
+      ) : error ? (
+        <p>Nao foi possivel carregar a carteira.</p>
       ) : holdings.length === 0 ? (
         <div className="empty-state">
           <div className="empty-state-icon">
@@ -223,28 +208,14 @@ export default function Holdings() {
               {editingHolding ? 'Editar FII' : 'Novo FII'}
             </h3>
             <form onSubmit={handleSubmit}>
-              <div className="form-group">
-                <label className="form-label">Ticker</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={formData.ticker}
-                  onChange={handleTickerChange}
-                  onFocus={() => setShowSuggestions(true)}
-                  placeholder="HGLG11"
-                  autoComplete="off"
-                  required
-                />
-                {showSuggestions && suggestions.length > 0 && (
-                  <ul className="suggestions-dropdown">
-                    {suggestions.map((s) => (
-                      <li key={s} onClick={() => selectSuggestion(s)} className="suggestion-item">
-                        {s}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+              <TickerInput
+                value={formData.ticker}
+                onChange={handleTickerChange}
+                onSelect={selectSuggestion}
+                suggestions={suggestions}
+                showSuggestions={showSuggestions}
+                setShowSuggestions={setShowSuggestions}
+              />
               <div className="form-group">
                 <label className="form-label">Quantidade de Cotas</label>
                 <input
@@ -282,7 +253,14 @@ export default function Holdings() {
                 />
               </div>
               <div className="form-actions">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    setShowModal(false);
+                    setShowSuggestions(false);
+                  }}
+                >
                   Cancelar
                 </button>
                 <button type="submit" className="btn btn-primary">

@@ -175,7 +175,15 @@ export async function fetchMultipleFiiData(tickers: string[]): Promise<Record<st
   if (remaining.length > 0) {
     console.log(`[Batch] Fallback individual para ${remaining.length} ativos...`);
     await Promise.all(remaining.map(async (t) => {
-      result[t] = await fetchFiiData(t);
+      try {
+        result[t] = await fetchFiiData(t);
+      } catch (error) {
+        console.error(`[Batch] Erro ao buscar dados de ${t}:`, (error as Error).message);
+        result[t] = {
+          ticker: t,
+          ...generateMockFiiData(t),
+        };
+      }
     }));
   }
 

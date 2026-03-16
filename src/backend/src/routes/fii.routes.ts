@@ -27,10 +27,10 @@ router.get('/quote/:ticker', async (req: AuthRequest, res) => {
   try {
     const { ticker } = req.params;
     const data = await fetchFiiData((ticker as string).toUpperCase());
-    res.json(data);
+    return res.json(data);
   } catch (error) {
     console.error('Fetch FII quote error:', error);
-    res.status(500).json({ error: 'Erro ao buscar cotação' });
+    return res.status(500).json({ error: 'Erro ao buscar cotação' });
   }
 });
 
@@ -39,16 +39,20 @@ router.get('/dividends/:ticker', async (req: AuthRequest, res) => {
   try {
     const { ticker } = req.params;
     const dividends = await fetchDividendsHistory((ticker as string).toUpperCase());
-    res.json(dividends);
+    return res.json(dividends);
   } catch (error) {
     console.error('Fetch dividends error:', error);
-    res.status(500).json({ error: 'Erro ao buscar histórico de dividendos' });
+    return res.status(500).json({ error: 'Erro ao buscar histórico de dividendos' });
   }
 });
 
 // Get portfolio analysis
 router.get('/analysis', async (req: AuthRequest, res) => {
   try {
+    if (!req.userId) {
+      return res.status(401).json({ error: 'Token inválido' });
+    }
+
     const holdings = await prismaClient.holding.findMany({
       where: { userId: req.userId },
     });
@@ -81,16 +85,20 @@ router.get('/analysis', async (req: AuthRequest, res) => {
       };
     });
 
-    res.json(analysis);
+    return res.json(analysis);
   } catch (error) {
     console.error('Portfolio analysis error:', error);
-    res.status(500).json({ error: 'Erro ao analisar carteira' });
+    return res.json([]);
   }
 });
 
 // Get dashboard summary
 router.get('/dashboard', async (req: AuthRequest, res) => {
   try {
+    if (!req.userId) {
+      return res.status(401).json({ error: 'Token inválido' });
+    }
+
     const holdings = await prismaClient.holding.findMany({
       where: { userId: req.userId },
     });
@@ -131,7 +139,7 @@ router.get('/dashboard', async (req: AuthRequest, res) => {
         payDate: d.payDate,
       }));
 
-    res.json({
+    return res.json({
       totalInvested,
       totalCurrentValue,
       totalGainLoss: totalCurrentValue - totalInvested,
@@ -143,7 +151,16 @@ router.get('/dashboard', async (req: AuthRequest, res) => {
     });
   } catch (error) {
     console.error('Dashboard error:', error);
-    res.status(500).json({ error: 'Erro ao buscar dashboard' });
+    return res.json({
+      totalInvested: 0,
+      totalCurrentValue: 0,
+      totalGainLoss: 0,
+      totalGainLossPercent: 0,
+      totalDividendsReceived: 0,
+      holdingsCount: 0,
+      holdings: [],
+      pendingDividends: [],
+    });
   }
 });
 

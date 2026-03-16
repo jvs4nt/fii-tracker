@@ -16,8 +16,15 @@ export const authMiddleware = (req: AuthRequest, res: Response, next: NextFuncti
   const token = authHeader.split(' ')[1];
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret') as { userId: string };
-    req.userId = decoded.userId;
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret') as jwt.JwtPayload;
+    const userId = decoded.userId || decoded.id;
+
+    if (!userId || typeof userId !== 'string') {
+      res.status(401).json({ error: 'Token inválido' });
+      return;
+    }
+
+    req.userId = userId;
     next();
   } catch (error) {
     res.status(401).json({ error: 'Token inválido' });

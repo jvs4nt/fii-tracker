@@ -1,7 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { dividendsApi } from '../api';
 import Layout from '../components/Layout';
 import { Plus, Trash2, CheckCircle } from 'lucide-react';
+import TickerInput from '../components/TickerInput';
+import { useAsyncData } from '../hooks/useAsyncData';
+import { useTickerSuggestions } from '../hooks/useTickerSuggestions';
 
 interface Dividend {
   id: string;
@@ -14,8 +17,6 @@ interface Dividend {
 }
 
 export default function Dividends() {
-  const [dividends, setDividends] = useState<Dividend[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({
     ticker: '',
@@ -24,50 +25,29 @@ export default function Dividends() {
     exDate: new Date().toISOString().split('T')[0],
     payDate: new Date().toISOString().split('T')[0],
   });
-  const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const { suggestions } = useTickerSuggestions(formData.ticker);
 
-  useEffect(() => {
-    fetchDividends();
+  const fetchDividends = useCallback(async () => {
+    const response = await dividendsApi.getAll();
+    return response.data as Dividend[];
   }, []);
 
-  const fetchSuggestions = async (query: string) => {
-    if (query.length < 2) {
-      setSuggestions([]);
-      return;
-    }
-    try {
-      // Usando fiiApi (precisa importar ou usar via api global se disponível)
-      const { fiiApi } = await import('../api');
-      const response = await fiiApi.search(query);
-      setSuggestions(response.data);
-    } catch (error) {
-      console.error('Erro ao buscar sugestões:', error);
-    }
-  };
+  const {
+    data: dividendsData,
+    loading,
+    error,
+    reload: reloadDividends,
+  } = useAsyncData<Dividend[]>(fetchDividends);
 
-  const handleTickerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value.toUpperCase();
-    setFormData({ ...formData, ticker: val });
-    fetchSuggestions(val);
-    setShowSuggestions(true);
+  const dividends = dividendsData ?? [];
+
+  const handleTickerChange = (ticker: string) => {
+    setFormData((prev) => ({ ...prev, ticker }));
   };
 
   const selectSuggestion = (s: string) => {
-    setFormData({ ...formData, ticker: s });
-    setSuggestions([]);
-    setShowSuggestions(false);
-  };
-
-  const fetchDividends = async () => {
-    try {
-      const response = await dividendsApi.getAll();
-      setDividends(response.data);
-    } catch (error) {
-      console.error('Erro ao buscar dividendos:', error);
-    } finally {
-      setLoading(false);
-    }
+    setFormData((prev) => ({ ...prev, ticker: s }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -90,7 +70,7 @@ export default function Dividends() {
         exDate: new Date().toISOString().split('T')[0],
         payDate: new Date().toISOString().split('T')[0],
       });
-      fetchDividends();
+      await reloadDividends();
     } catch (error) {
       console.error('Erro ao criar dividendo:', error);
     }
@@ -99,7 +79,7 @@ export default function Dividends() {
   const handleMarkReceived = async (id: string) => {
     try {
       await dividendsApi.markReceived(id);
-      fetchDividends();
+      await reloadDividends();
     } catch (error) {
       console.error('Erro ao marcar como recebido:', error);
     }
@@ -109,7 +89,7 @@ export default function Dividends() {
     if (confirm('Tem certeza que deseja deletar este dividendo?')) {
       try {
         await dividendsApi.delete(id);
-        fetchDividends();
+        await reloadDividends();
       } catch (error) {
         console.error('Erro ao deletar:', error);
       }
@@ -125,10 +105,17 @@ export default function Dividends() {
       payDate: new Date().toISOString().split('T')[0],
     });
     setShowModal(true);
+    setShowSuggestions(false);
   };
 
-  const pendingDividends = dividends.filter(d => d.status === 'pending');
-  const receivedDividends = dividends.filter(d => d.status === 'received');
+  const pendingDividends = useMemo(
+    () => dividends.filter((d) => d.status === 'pending'),
+    [dividends]
+  );
+  const receivedDividends = useMemo(
+    () => dividends.filter((d) => d.status === 'received'),
+    [dividends]
+  );
 
   const totalReceived = receivedDividends.reduce((sum, d) => sum + d.amount, 0);
   const totalPending = pendingDividends.reduce((sum, d) => sum + d.amount, 0);
@@ -168,6 +155,8 @@ export default function Dividends() {
 
       {loading ? (
         <p>Carregando...</p>
+      ) : error ? (
+        <p>Nao foi possivel carregar os proventos.</p>
       ) : pendingDividends.length === 0 && receivedDividends.length === 0 ? (
         <div className="empty-state">
           <div className="empty-state-icon">
@@ -286,28 +275,14 @@ export default function Dividends() {
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <h3 className="modal-title">Adicionar Provento</h3>
             <form onSubmit={handleSubmit}>
-              <div className="form-group">
-                <label className="form-label">Ticker do FII</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={formData.ticker}
-                  onChange={handleTickerChange}
-                  onFocus={() => setShowSuggestions(true)}
-                  placeholder="HGLG11"
-                  autoComplete="off"
-                  required
-                />
-                {showSuggestions && suggestions.length > 0 && (
-                  <ul className="suggestions-dropdown">
-                    {suggestions.map((s) => (
-                      <li key={s} onClick={() => selectSuggestion(s)} className="suggestion-item">
-                        {s}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+              <TickerInput
+                value={formData.ticker}
+                onChange={handleTickerChange}
+                onSelect={selectSuggestion}
+                suggestions={suggestions}
+                showSuggestions={showSuggestions}
+                setShowSuggestions={setShowSuggestions}
+              />
               <div className="form-group">
                 <label className="form-label">Valor (R$)</label>
                 <input
@@ -353,7 +328,14 @@ export default function Dividends() {
                 />
               </div>
               <div className="form-actions">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    setShowModal(false);
+                    setShowSuggestions(false);
+                  }}
+                >
                   Cancelar
                 </button>
                 <button type="submit" className="btn btn-primary">

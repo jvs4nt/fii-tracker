@@ -11,6 +11,18 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     return !!localStorage.getItem('token');
   });
+  useEffect(() => {
+    const handleStorage = () => {
+      setIsAuthenticated(!!localStorage.getItem('token'));
+    };
+
+    window.addEventListener('storage', handleStorage);
+
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, []);
+
 
   useEffect(() => {
     const root = document.documentElement;
@@ -54,7 +66,7 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Login onLogin={() => setIsAuthenticated(true)} />} />
-          <Route path="*" element={<Navigate to="/" />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
     );
@@ -68,7 +80,7 @@ function App() {
         <Route path="/dividends" element={<Dividends />} />
         <Route path="/analysis" element={<Analysis />} />
         <Route path="/documentation" element={<Documentation />} />
-        <Route path="*" element={<Navigate to="/dashboard" />} />
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </BrowserRouter>
   );
