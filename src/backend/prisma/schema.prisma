@@ -1,0 +1,65 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  holdings  Holding[]
+  dividends Dividend[]
+}
+
+model Holding {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  ticker      String
+  quantity    Float
+  avgPrice    Float
+  purchaseDate DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  dividends   Dividend[]
+
+  @@unique([userId, ticker])
+}
+
+model Dividend {
+  id          String   @id @default(uuid())
+  holdingId   String?
+  holding     Holding? @relation(fields: [holdingId], references: [id])
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  ticker      String
+  amount      Float
+  type        String   // "dividendo", "jcp", "desdobramento"
+  exDate      DateTime
+  payDate     DateTime?
+  status      String   @default("pending") // "pending", "received"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model FiiMetadata {
+  ticker           String   @id
+  name             String?
+  sector           String?
+  currentPrice     Float?
+  pVP              Float?
+  dy12m            Float?
+  lastDividend     Float?
+  lastDividendDate DateTime?
+  nextDividendDate DateTime?
+  updatedAt        DateTime @updatedAt
+}
