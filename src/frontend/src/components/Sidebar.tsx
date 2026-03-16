@@ -36,7 +36,7 @@ export default function Sidebar() {
         <div className="sidebar-header">
           <h2 className="sidebar-title">
             <ChartPie size={24} />
-            FII Tracker
+            InvesteIA
           </h2>
           {/* Close button inside sidebar for mobile */}
           <button className="mobile-close-btn" onClick={toggleMenu}>
@@ -62,10 +62,10 @@ export default function Sidebar() {
             );
           })}
           {/* Mobile-only logout item inside the menu */}
-          <li className="nav-item mobile-only" onClick={handleLogout} style={{ color: 'var(--danger)' }}>
+          {/* <li className="nav-item mobile-only" onClick={handleLogout} style={{ color: 'var(--danger)' }}>
             <LogOut size={20} />
             Sair
-          </li>
+          </li> */}
         </ul>
         <div className="sidebar-footer">
           <button className="logout-btn" onClick={handleLogout}>

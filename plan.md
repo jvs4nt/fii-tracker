@@ -1,4 +1,4 @@
-# FII Tracker - Plano do Projeto
+# InvesteIA - Plano do Projeto
 
 ## Visão Geral
 Webapp para gestão de carteira de Fundos de Investimento Imobiliário (FIIs), com análise automatizada de performance, proventos e recomendações de investimento.

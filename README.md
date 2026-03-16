@@ -1,4 +1,4 @@
-# FII Tracker 📈
+# InvesteIA 📈
 
 Uma aplicação web completa para rastrear e gerenciar sua carteira de Fundos de Investimento Imobiliário (FIIs), monitorar proventos e obter recomendações inteligentes com base em dados em tempo real.
 
