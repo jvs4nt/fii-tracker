@@ -540,6 +540,45 @@ body {
   color: var(--danger);
 }
 
+/* Markdown Styles */
+.markdown-body table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.5rem 0;
+}
+
+.markdown-body th,
+.markdown-body td {
+  padding: 1rem 1.5rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.markdown-body th {
+  background-color: var(--bg-hover);
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.markdown-body td {
+  color: var(--text-primary);
+}
+
+.markdown-body tr:hover td {
+  background-color: var(--bg-hover);
+}
+
+.markdown-body blockquote {
+  border-left: 4px solid var(--primary);
+  margin: 1.5rem 0;
+  background-color: rgba(16, 185, 129, 0.05);
+  padding: 1rem;
+  border-radius: 0 8px 8px 0;
+}
+
 @media (max-width: 768px) {
   .sidebar {
     width: 100%;

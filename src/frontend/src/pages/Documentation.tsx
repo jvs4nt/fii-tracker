@@ -1,50 +1,101 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { LayoutDashboard, TrendingUp, DollarSign, Wallet, BookOpen, Globe } from 'lucide-react';
 
 const ptDoc = `
-# FII Tracker 📈
+# 📈 FII Tracker - Manual do Usuário
 
-Uma aplicação web completa para rastrear e gerenciar sua carteira de Fundos de Investimento Imobiliário (FIIs), monitorar proventos e obter recomendações inteligentes com base em dados em tempo real.
+Bem-vindo ao **FII Tracker**, a sua plataforma definitiva para gerenciamento de Fundos de Investimentos Imobiliários. Nosso objetivo é simplificar o acompanhamento da sua carteira, proventos e fornecer *insights* valiosos.
 
-## 🚀 Funcionalidades
+---
 
-*   **Autenticação de Usuário**: Login e registro seguros usando JWT e bcrypt.
-*   **Gerenciamento de Carteira (Carteira)**: Adicione, edite e remova FIIs do seu portfólio. Acompanhe a quantidade, preço médio e data da compra.
-*   **Rastreamento de Proventos (Proventos)**: 
-    *   Permite a entrada de dividendos, JCP e desdobramentos.
-    *   Acompanha proventos pendentes vs. recebidos.
-*   **Dashboard em Tempo Real**: Visualização da sua carteira por setor usando gráficos interativos, mostrando o total investido, valor atual e lucro/prejuízo.
-*   **Análise Inteligente**: 
-    *   Busca automaticamente cotações em tempo real e o P/VP na API.
-    *   Fornece recomendações baseadas no P/VP atual.
+## 🧭 Como Navegar
+A aplicação é dividida em quatro áreas principais:
 
-## 🛠️ Tecnologias Utilizadas
-*   **Frontend**: React, TypeScript, React Router, Vite, Recharts, Lucide.
-*   **Backend**: Node.js, Express, Prisma ORM, SQLite, JWT.
+| Área | Descrição | Ícone |
+| :--- | :--- | :---: |
+| **Dashboard** | Visão geral da sua carteira, gráficos de distribuição por setor e resumo de proventos pendentes. | 📊 |
+| **Carteira** | Gerenciamento dos seus ativos. Local para adicionar, editar ou remover FIIs, quantidade de cotas e preço médio. | 💼 |
+| **Proventos** | Histórico e calendário de dividendos e JCP. Marque proventos como "Recebidos" para o controle do seu fluxo de caixa. | 💵 |
+| **Análise** | Recomendações automáticas do sistema baseadas em indicadores fundamentalistas e cotação em tempo real. | 📈 |
+
+---
+
+## 🧠 Como Funciona a "Análise Inteligente"?
+
+O FII Tracker utiliza integrações em tempo real (via *Brapi.dev*) para obter cotações atualizadas da B3. As recomendações geradas na aba **Análise** seguem a seguinte lógica baseada no **P/VP (Preço sobre Valor Patrimonial)**:
+
+> **P/VP < 0.95**: 🟢 **Indicação de Compra** - O fundo está sendo negociado com "desconto", abaixo do seu valor justo de patrimônio.
+>
+> **P/VP entre 0.95 e 1.05**: 🟡 **Indicação de Manter** - O fundo está sendo negociado por um valor justo, próximo ao que ele realmente vale.
+>
+> **P/VP > 1.05**: 🔴 **Indicação de Venda** - O fundo está sobrepreçado, com ágio. Pode ser interessante aguardar uma correção no preço.
+
+---
+
+## 💡 Dicas de Uso
+- **Mantenha seu Preço Médio atualizado:** O cálculo de lucro/prejuízo no Dashboard depende diretamente do preço médio que você insere na tela de "Carteira".
+- **Acompanhe a Data Com (Data Ex):** Na aba de "Proventos", fique de olho na coluna "Data Ex". Você precisa ter as cotas do fundo antes dessa data de corte para ter direito ao recebimento na "Data Pagamento".
+- **Diversifique:** Utilize o gráfico de formato rosca no Dashboard para entender o peso de cada setor (Logística, Shopping, Papel, etc.) na sua carteira e equilibrar seus ativos!
+
+---
+
+## 🛠️ Stack Tecnológica
+
+O sistema FII Tracker foi construído utilizando tecnologias modernas e robustas:
+
+* **Frontend:** \`React\`, \`TypeScript\`, \`Vite\`, \`Recharts\` (para os gráficos), e \`Lucide-react\` (iconografia).
+* **Backend:** \`Node.js\`, \`Express\`, \`Prisma ORM\` (com banco \`SQLite\`), \`JWT\` e \`bcrypt\` (segurança de dados).
+* **APIs de Terceiros:** Integração direta com \`Brapi.dev\` para obtenção segura de cotações em tempo real e fallback dinâmico (sistema de simulação e web-scraping interno com \`cheerio\`).
 `;
 
 const enDoc = `
-# FII Tracker 📈
+# 📈 FII Tracker - User Manual
 
-A complete web application to track and manage your Brazilian Real Estate Investment Trusts (FII) portfolio, dividends, and get smart recommendations based on real-time data.
+Welcome to **FII Tracker**, your definitive platform for Real Estate Investment Trusts (FIIs) management. Our goal is to simplify tracking your portfolio, dividends, and provide valuable *insights*.
 
-## 🚀 Features
+---
 
-*   **User Authentication**: Secure login and registration using JWT and bcrypt.
-*   **Portfolio Management (Holdings)**: Add, edit, and remove FIIs from your portfolio. Tracks quantity, average price, and purchase date.
-*   **Dividends Tracking**: 
-    *   Allows manual entry of dividends, JCP, and stock splits.
-    *   Tracks pending vs. received dividends.
-*   **Real-time Dashboard**: Visual breakdown of your portfolio by sector using interactive charts, showing total invested, current value, and overall gain/loss.
-*   **Smart Analysis**: 
-    *   Automatically fetches real-time quotes and P/VP data.
-    *   Provides "Buy", "Hold", or "Sell" recommendations based on the current P/VP ratio.
+## 🧭 How to Navigate
+The application is divided into four main areas:
 
-## 🛠️ Technologies Used
-*   **Frontend**: React, TypeScript, React Router, Vite, Recharts, Lucide.
-*   **Backend**: Node.js, Express, Prisma ORM, SQLite, JWT.
+| Area | Description | Icon |
+| :--- | :--- | :---: |
+| **Dashboard** | Overview of your portfolio, sector distribution charts, and a summary of pending dividends. | 📊 |
+| **Holdings** | Portfolio management. Your place to add, edit, or remove FIIs, quantity, and average price. | 💼 |
+| **Dividends** | History and calendar of dividends and interest on equity (JCP). Mark dividends as "Received" to track cash flow. | 💵 |
+| **Analysis** | Automatic system recommendations based on fundamental indicators and real-time quotes. | 📈 |
+
+---
+
+## 🧠 How does "Smart Analysis" work?
+
+FII Tracker uses real-time integrations (via *Brapi.dev*) to fetch updated B3 quotes. The recommendations generated on the **Analysis** tab follow this logic based on the **P/VP (Price to Book Value Ratio)**:
+
+> **P/VP < 0.95**: 🟢 **Buy Recommendation** - The fund is trading at a "discount", below its fair book value.
+>
+> **P/VP between 0.95 and 1.05**: 🟡 **Hold Recommendation** - The fund is trading near its fair intrinsic value.
+>
+> **P/VP > 1.05**: 🔴 **Sell Recommendation** - The fund is overpriced (premium). It might be interesting to wait for a price correction.
+
+---
+
+## 💡 Usage Tips
+- **Keep your Average Price updated:** The profit/loss calculation on the Dashboard depends directly on the average price you input in the "Holdings" screen.
+- **Track the Ex-Date:** In the "Dividends" tab, keep an eye on the "Data Ex" column. You must own the fund's shares before this cutoff date to be entitled to receive the dividend on the "Pay Date".
+- **Diversify:** Use the donut chart on the Dashboard to understand the weight of each sector (Logistics, Malls, Paper, etc.) in your portfolio, and balance your assets!
+
+---
+
+## 🛠️ Tech Stack
+
+The FII Tracker system is built using modern and robust technologies:
+
+* **Frontend:** \`React\`, \`TypeScript\`, \`Vite\`, \`Recharts\` (for charts), and \`Lucide-react\` (iconography).
+* **Backend:** \`Node.js\`, \`Express\`, \`Prisma ORM\` (with \`SQLite\` database), \`JWT\`, and \`bcrypt\` (data security).
+* **Third-Party APIs:** Direct integration with \`Brapi.dev\` to securely fetch real-time quotes, along with dynamic fallbacks (internal simulation system and web-scraping using \`cheerio\`).
 `;
 
 export default function Documentation() {
@@ -104,7 +155,7 @@ export default function Documentation() {
 
         <div className="card" style={{ marginTop: '2rem', padding: '2rem' }}>
           <div className="markdown-body" style={{ lineHeight: '1.6' }}>
-            <ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
               {language === 'PT' ? ptDoc : enDoc}
             </ReactMarkdown>
           </div>

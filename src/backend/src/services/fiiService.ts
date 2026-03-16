@@ -19,7 +19,7 @@ export async function fetchFiiData(ticker: string): Promise<Partial<FiiData>> {
   try {
     // Try Brapi.dev first
     try {
-      const response = await axios.get(`${BRAPI_API_BASE}/${ticker}.SA?token=free`);
+      const response = await axios.get(`${BRAPI_API_BASE}/${ticker}.SA?token=nnTscN4CwEZ2SDnx1AW8PB&modules=summaryProfile`);
       const quote = response.data.results?.[0];
 
       if (quote) {
@@ -27,7 +27,7 @@ export async function fetchFiiData(ticker: string): Promise<Partial<FiiData>> {
           ticker,
           currentPrice: quote.regularMarketPrice || 0,
           name: quote.longName || ticker,
-          sector: quote.segment || 'Unknown',
+          sector: quote.summaryProfile?.industry || quote.segment || 'Unknown',
           dy12m: quote.dividendYield || 0,
         };
       }
